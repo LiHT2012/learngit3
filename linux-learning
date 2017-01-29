@@ -1,0 +1,108 @@
+linux系统中的super键指的是windows键
+Alt+Tab，显示程序切换条，tab键用户选择程序，释放则变成当前窗口
+Alt+～同一应用程序的不同窗口间的切换
+windows+w展示所有打开程序
+长按windos看左侧程序启动栏launcher，有数字，按相应数字进行选择
+
+super+ A 搜索面板
+在终端中按firefox&，回车。这个适用于以终端作为主要操作窗口的用户，使用TAB键还可以自动补全命令（只需输入前几个字母再按TAB键）。&在shell中是后台运行的意思，这样终端就不会被Firefox独占。
+
+CTRL + T: 新建标签页
+
+CTRL + W: 关闭标签页
+
+CTRL + SHIFT + T: 重新打开最近关闭的一个标签页
+
+CTRL + TAB: 切换到下一个标签页
+
+CTRL + SHIFT + TAB: 切换到上一个标签页
+
+ALT + [1-8]: 跳到制定标签页
+
+ALT + 9: 跳到最后一个标签页
+
+CTRL + L: 跳到地址栏
+
+ESC: 停止加载当前页面
+
+CTRL + K: 跳到搜索引擎输入框
+
+CTRL + F: 在当前页面中搜索
+
+/: 快速查找。在Linux中很多程序（如VI、Man、Less）都使用/作为搜索的快捷键，并且可使用正则表达式查找。但在Firefox中没有正则表达式搜索的功能。
+
+CTRL + D: 收藏到书签
+
+ALT + 左方向键: 后退
+
+ALT + v: 前进
+
+CTRL + Q: 退出
+
+启动gedit：SUPER + A，然后按gedit，回车
+
+CTRL + N: 新建文档
+
+CTRL + W: 关闭文档
+
+CTRL + S: 保存
+
+CTRL + SHIFT + S: 另存为
+
+CTRL + S: 搜索
+
+CTRL + H: 搜索并替换
+
+CTRL + I: 跳到某一行
+
+CTRL + C: 复制
+
+CTRL + V: 粘贴
+
+CTRL + X: 剪切
+
+CTRL + Q: 退出
+
+启动Nautilus的方法：即文件管理器
+1. SUPER + 1，这个方法仅适用于Nautilus在左边快速启动的位置没有改变的情况。
+
+2. SUPER + A，然后输入nautilus，然后回车
+
+F2: 重命名
+
+CTRL + 1: 图标视图
+
+CTRL + 2: 列表视图
+
+CTRL + T: 新建标签页
+
+CTRL + W: 关闭标签页
+
+CTRL + D: 收藏到书签
+
+CTRL + Q: 退出
+
+有关终端
+CTRL + ALT + T: 打开终端
+
+TAB: 自动补全命令或文件名
+
+CTRL + SHIFT + V: 粘贴（Linux中不需要复制的动作，文本被选择就自动被复制）
+
+CTRL + SHIFT + T: 新建标签页
+
+CTRL + D: 关闭标签页
+
+CTRL + L: 清除屏幕
+
+CTRL + R + 文本: 在输入历史中搜索
+
+CTRL + A: 移动到行首
+
+CTRL + E: 移动到行末
+
+CTRL + C: 终止当前任务
+
+CTRL + Z: 把当前任务放到后台运行（相当于运行命令时后面加&）
+
+~: 表示用户目录路径

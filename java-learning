@@ -1,1 +1,119 @@
+1，接口中定义变量必须是public static final：http://blog.csdn.net/shiyf/article/details/40517651
 
+答：
+首先接口是一种高度抽象的"模版"，,而接口中的属性也就是’模版’的成员，就应当是所有实现"模版"的实现类的共有特性，
+所以它是public 的 ,是所有实现类共有的 .否则具体实现类不能使用该变量，则就没有了定义的意义。
+
+static的原因是，假如可以是非static的话，因一个类可以继承多个接口，出现重名的变量，如何区分呢？
+所以必须定义成static的，以便区分。
+例如一个类实现了两个不同的接口，这两个接口中有相同名字的变量定义，示例代码如下：
+public class MultiInmpl implements InTF, InTFOther{
+public static void main(String[] args) {
+MultiInmpl m = new MultiInmpl();
+//如果实现的接口中有同名的变量，则不能引用
+System.out.println(m.str);//str在2个接口中都有定义
+}
+}
+以上代码编译错误！！！
+Multiple markers at this line
+- The field m.str is ambiguous
+- Line breakpoint:MultiInmpl [line: 11] - main(String[])
+
+其次,接口中如果可能定义非final的变量的话，而方法又都是abstract的，这就自相矛盾了，
+有可变成员变量但对应的方法却无法操作这些变量，虽然可以直接修改这些静态成员变量的值，但所有实现类对应的值都被修改了，
+这跟抽象类有何区别? 又接口是一种更高层面的抽象，是一种规范、功能定义的声明，所有可变的东西都应该归属到实现类中，
+这样接口才能起到标准化、规范化的作用。所以接口中的属性必然是final的。
+
+最后，接口只是对事物的属性和行为更高层次的抽象 。对修改关闭，对扩展（不同的实现implements）开放，
+接口是对开闭原则（Open-Closed Principle ）的一种体现。
+2,JSONObject和JSONArray：http://blog.csdn.net/lishuangzhe7047/article/details/28880009
+ 举个例子说明，如下：【{name1:{name2:{name3:'value1',name4:'value2'}}},{}】
+      从外到里看，例子中就是一个数组，数组里面是两个json格式的字符串。这样分析思路就清晰多了。
+    工作中需要取出name4的值，你们会怎么取呢？。最初我都想过字符串截取，那时还不了解JSONArray，现在知道了，取出来也就相当容易了。
+取出name4值过程步骤：1，将以上字符串转换为JSONArray对象；2，取出对象的第一项，JSONObject对象；3，取出name1的值JSONObject对象；
+4，取出name2的值JSONObject对象；5，取出name4的值value2。
+    示例中json数组格式的字符串可以通过方法直接转换为JSONArray的格式:JSONArray.fromObject(String)
+[java] view plain copy print?在CODE上查看代码片派生到我的代码片
+</pre><pre name="code" class="java">JSONArray getJsonArray=JSONArray.fromObject(arrayStr);//将结果转换成JSONArray对象的形式  
+JSONObject getJsonObj = getJsonArray.getJSONObject(0);//获取json数组中的第一项  
+String result=getJsonObj.getJSONObject("name1").getJSONObject("name2").getJSONObject("name4");  
+
+   好了我们说说这两个对象。
+1，JSONObject
+ json对象，就是一个键对应一个值，使用的是大括号{ }，如：{key:value}
+2，JSONArray
+  json数组，使用中括号[ ],只不过数组里面的项也是json键值对格式的
+
+  Json对象中添加的是键值对，JSONArray中添加的是Json对象
+[java] view plain copy print?在CODE上查看代码片派生到我的代码片
+JSONObject Json = new JSONObject();  
+JSONArray JsonArray = new JSONArray();  
+  
+Json.put("key", "value");//JSONObject对象中添加键值对  
+##JSONObject用put添加键值对，也可.element("key",value);
+##JSONArray用add添加对象Object，Object不用限定相同
+##JSONObject和JSONArray的示例http://www.cnblogs.com/xwdreamer/archive/2011/12/16/2296904.html
+
+JsonArray.add(Json);//将JSONObject对象添加到Json数组中  
+
+3，JSONObject与Map
+   Map map和json都是键值对，不同的是map中键值对中间用等号分开，json中键值对中间用冒号分开。其实json就是一种特殊形式的map。
+[java] view plain copy print?在CODE上查看代码片派生到我的代码片
+Map<String,String> strmap=new JSONObject();
+
+4,spring 注解
+@Component,@Service,@Controller,@Repository注解的类，并把这些类纳入进spring容器中管理。 
+下面写这个是引入component的扫描组件 
+<context:component-scan base-package=”com.mmnc”>    
+
+其中base-package为需要扫描的包（含所有子包） 
+       1、@Service用于标注业务层组件 
+       2、@Controller用于标注控制层组件(如struts中的action) 
+       3、@Repository用于标注数据访问组件，即DAO组件. 
+       4、@Component泛指组件，当组件不好归类的时候，我们可以使用这个注解进行标注。    
+           @Service public class UserServiceImpl implements UserService { } 
+           @Repository public class UserDaoImpl implements UserDao { } 
+ getBean的默认名称是类名（头字母小写），如果想自定义，可以@Service(“aaaaa”)这样来指定。
+这种bean默认是“singleton”的，如果想改变，可以使用@Scope(“prototype”)来改变。
+
+可以使用以下方式指定初始化方法和销毁方法：
+[java] view plain copy
+
+    @PostConstruct  
+    public void init() {   
+    }   
+    @PreDestroy  
+    public void destory() {   
+    }   
+注入方式：
+
+把DAO实现类注入到action的service接口(注意不要是service的实现类)中，注入时不要new 这个注入的类，因为spring会自动注入，如果手动再new的话会出现错误，
+然后属性加上@Autowired后不需要getter()和setter()方法，Spring也会自动注入。  
+
+在接口前面标上@Autowired注释使得接口可以被容器注入，如：
+[java] view plain copy
+
+    @Autowired  
+    @Qualifier("chinese")  
+    private Man man;   
+
+当接口存在两个实现类的时候必须使用@Qualifier指定注入哪个实现类，否则可以省略，只写@Autowired。
+
+
+##@Autowired 按type进行注入，@Resource 按name进行注入
+@Resource装配顺序
+　　1. 如果同时指定了name和type，则从Spring上下文中找到唯一匹配的bean进行装配，找不到则抛出异常
+　　2. 如果指定了name，则从上下文中查找名称（id）匹配的bean进行装配，找不到则抛出异常
+　　3. 如果指定了type，则从上下文中找到类型匹配的唯一bean进行装配，找不到或者找到多个，都会抛出异常
+　　4. 如果既没有指定name，又没有指定type，则自动按照byName方式进行装配；如果没有匹配，则回退为一个原始类型进行匹配，如果匹配则自动装配；
+  
+Spring 容器中的 Bean 是有生命周期的，Spring 允许在 Bean 在初始化完成后以及 Bean 销毁前执行特定的操作，
+您既可以通过实现 InitializingBean/DisposableBean 接口来定制初始化之后 / 销毁之前的操作方法，
+也可以通过 <bean> 元素的 init-method/destroy-method 属性指定初始化之后 / 销毁之前调用的操作方法
+
+JSR-250 为初始化之后/销毁之前方法的指定定义了两个注释类，分别是 @PostConstruct 和 @PreDestroy，这两个注释只能应用于方法上。
+标注了 @PostConstruct 注释的方法将在类实例化后调用，而标注了 @PreDestroy 的方法将在类销毁之前调用。
+
+不管是通过实现 InitializingBean/DisposableBean 接口，还是通过 <bean> 元素的 init-method/destroy-method 属性进行配置，
+都只能为 Bean 指定一个初始化 / 销毁的方法。但是使用 @PostConstruct 和 @PreDestroy 注释却可以指定多个初始化 / 销毁方法，
+那些被标注 @PostConstruct 或 @PreDestroy 注释的方法都会在初始化 / 销毁时被执行。

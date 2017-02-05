@@ -1,3 +1,13 @@
+*****修改本机redis的端口号
+  1.redis-cli
+  2.cd ../../etc/
+  3.cd redis/
+  4.sudo su root
+  5.vim redis.conf -----修改port 3333
+  6./etc/init.d/redis-server restart  ----重启本机redis
+  
+  
+  
 linux系统中的super键指的是windows键
 Alt+Tab，显示程序切换条，tab键用户选择程序，释放则变成当前窗口
 Alt+～同一应用程序的不同窗口间的切换

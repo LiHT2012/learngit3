@@ -1,0 +1,19 @@
+1.urls.properties×××××
+dbc_url_prod=http://172.31.7.143:8088
+dbc_url_test1=http://54.222.162.170:8088/test
+dbc_url_test2=http://54.222.207.155:8088/test
+dbc_url_local=http://localhost:8088
+dbc_url_localtoprod=http://54.223.61.93:8088
+solr_host_prod=172.31.1.73
+solr_host_test1=54.223.144.225
+solr_host_test2=54.222.207.155
+solr_host_local=54.223.144.225   -----默认为test1的solr，若要连接本地的dbc，线上的数据库和solr，则api的test_evn=local,dbc的为prod，
+但此时的solr地址应改成线上的，即下方localtoprod的地址
+solr_host_localtoprod=54.223.49.16
+redis_host_prod=
+redis_host_test1=
+redis_host_test2=
+redis_host_local=
+redis_host_localtoprod=
+2.api/main/action/view视图的相关内容
+  ViewOption.java ----interface----获取各类视图的默认视图

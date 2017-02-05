@@ -26,3 +26,9 @@ redis_host_localtoprod=
   
   CardViewOpt --- interface---获取系统默认的card视图数据----传参sceneType，resType
   CardViewOptImpl ---实现
+  
+  DirDocList --实现ViewOperation----@Component("dir_doc_list")---通过dir获得所在baseId，
+                                                          ListViewOpt.getDefaultBaseDocListView(baseId)
+  DirDocCard --- ……----@Component("dir_doc_card")
+  BaseDocList---…… ----@Component("base_doc_list")
+  BaseDocCard ---……----@Component("base_doc_card")

@@ -1,0 +1,21 @@
+
+定时发送一个请求
+38 10 12,13 4 * curl -d "测试库id" http://url:8088/dbc/api/trans/onebase
+
+
+test1：54.222.162.170
+
+curl -d "baseId=573e8ed130da2f8500f5ba54&wr=true" http://localhost:8082/dbc/api/trans/onebase
+
+http://factube.com/home/base/573e8ed130da2f8500f5ba54,衣物捐赠信息库,184
+
+
+一个tomcat部署多个应用
+https://zhidao.baidu.com/question/625502941648246804.html
+
+tomcat同一应用配置不同数据源
+http://www.iteye.com/problems/87043
+
+Tomcat配置多个Service，多个同名的应用运行在一个tomcat下
+http://www.educity.cn/wenda/373958.html
+

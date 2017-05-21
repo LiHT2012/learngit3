@@ -1,0 +1,138 @@
+curl -d "fromIndex=0&toIndex=100" http://localhost:8082/dbc/api/trans/somebases
+curl -d "" http://localhost:8082/dbc/api/trans/allexcpformdoc
+
+从远程服务器下载到本地
+scp -r ec2-user@54.223.16.132:apache-tomcat-7.0.65/dbc/dbc-tomcat.sh /home/dbc-intern5/code/liht/dbc
+
+将本地文件上传到服务器
+scp -r /home/dbc-intern5/code/liht/dbc/conf ec2-user@54.223.78.176:apache-tomcat-7.0.65/dbcserver.xml
+
+private static final String DBC_URL_HOST = "http://54.222.207.155:8088/test/dbc/";//SystemUrlCfg.getDbcUrlHost();
+
+git fetch(将远程分支同步到本地)
+
+<select id="selectCountByParameter" parameterType="java.util.Map"
+		resultType="java.lang.Integer">
+		select count(id) as num
+		from two_dimension
+		<where>
+			type = #{type}
+			<if test="firstId != null">
+				and first_ID = #{firstId}
+			</if>
+			<if test="secondId != null">
+				and second_ID = #{secondId}
+			</if>
+		</where>
+</select>
+
+<select id="batchGetCount" parameterType="java.util.Map"
+		resultMap="BaseResultMap">
+		select
+		<include refid="Base_Column_List" />
+		from two_dimension
+		<where>
+			type in
+			<foreach collection="types" item="item" index="index" open="("
+				separator="," close=")">
+				#{item}
+			</foreach>
+			<if test="firstIds != null">
+				and first_ID in
+				<foreach collection="firstIds" item="firstId" index="index"
+					open="(" separator="," close=")">
+					#{firstId}
+				</foreach>
+			</if>
+			<if test="secondIds != null">
+				and second_ID in
+				<foreach collection="secondIds" item="secondId" index="index"
+					open="(" separator="," close=")">
+					#{secondId}
+				</foreach>
+			</if>
+		</where>
+	</select>
+  
+  
+  
+  sudo su root
+# cd redis-3.2.4/src/  //进入redis路径下
+./redis-server redis.conf   //重启redis服务器
+若重启失败，可先杀死redis进程再重启  ps aux grep | redis  (查看redis进程)
+kill -9 进程号
+
+
+# bin/solr restart
+# bin/solr stop
+cd solr-5.5.0
+cd solr-5.5.0/server/solr/dbc/conf/
+
+
+cd ~切换到主目录 
+cd / 切换到根目录
+$ cp ../dbc.docs/fields/fieldEditorJson/address.json ./src/main/resources/fieldeditorjson/           复制文件到某目录
+
+
+
+<select id="batchGetIds" parameterType="java.util.Map"
+		resultMap="BaseResultMap">
+		select id, second_ID
+		from two_dimension
+		<where>
+			type = #{type}
+			and first_ID = #{firstId}
+			and second_ID in
+			<foreach item="item" index="index" collection="secondIds"
+				open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</where>
+	</select>
+  
+  package com.dbcool.model.mysql;
+
+import java.util.List;
+
+import org.apache.ibatis.session.SqlSession;
+
+public class Test {
+	public List<DocCount> getDocs(){
+		SqlSession session = MyBatisSqlSessionFactory.getSqlSession();
+		try{
+			String statement = "src.main.resources.mybatis.TwoDimensionMapper.xml";
+			List<DocCount> counts = session.selectList(statement);
+			session.commit();
+			return counts;
+		}
+		finally{
+			if(session != null){
+				session.close();
+			}//if
+		}//finally
+	}
+
+}
+
+git 删除本地分支】
+git branch -D br
+ 
+【git 删除远程分支】
+git push origin :br  (origin 后面有空格)
+github上已经有master分支 和dev分支
+在本地
+git checkout -b dev 新建并切换到本地dev分支
+git pull origin dev 本地分支与远程分支相关联
+在本地新建分支并推送到远程
+git checkout -b test
+git push origin test   这样远程仓库中也就创建了一个test分支
+
+
+
+
+cat .bashrc
+ssh ubuntu@54.222.207.155
+dbc-intern5@dbcintern5-ThinkPad-E550c:~$ cd ~/.ssh
+dbc-intern5@dbcintern5-ThinkPad-E550c:~/.ssh$ ls
+id_rsa  id_rsa.pub  known_hosts
+dbc-intern5@dbcintern5-ThinkPad-E550c:~/.ssh$ cat id_rsa

@@ -1,0 +1,20 @@
+1.在服务器添加完公钥之后，ssh服务器然后报了这个错误
+
+sign_and_send_pubkey: signing failed: agent refused operation
+
+然后执行了以下命令才好。。
+
+eval "$(ssh-agent -s)"
+ssh-add
+
+2. sudo su root
+
+cd /etc/ssh
+
+vim ssh_config
+将sendEnv LANG LC_*注释掉，暂时解决布服务器有乱码的问题，使本机的配置在服务器上不生效。
+
+3.在主目录下，cd .ssh;
+id_rsa为私钥;id_rsa.pub为公钥
+
+4.登录服务器，不用以管理员的身份，直接进行上述3的操作，authorized_keys添加key

@@ -1,0 +1,7 @@
+StringBuilder的用法：
+
+StringBuilder keyBuffer = new StringBuilder();
+for (String key : keys) {
+    keyBuffer.delete(0, keyBuffer.length());
+    keyVersions.add(new KeyVersion(keyBuffer.append(keyPrefix).append(key).toString()));
+}

@@ -1,0 +1,5 @@
+private static ObjectMapper objectMapper = new ObjectMapper();
+static {//修改static变量，将操作放在静态代码块里
+    objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true) ; 
+}
+

@@ -1,0 +1,30 @@
+http://www.cnblogs.com/net168/p/4129398.html
+
+获取类字节码的三种方式，每个类的字节码唯一
+public static void main(String[] args) throws Exception {
+　　//第一种方法，直接通过Person类来获取字节码
+　　Class cls1 = Person.class;
+　　//第二种方法，通过类的实例来获取Person类的字节码
+　　Person person = new Person();
+　　Class cls2 = person.getClass();
+　　//第三种方法，调用Class类的静态方法来获取对应类的字节码，该方法会抛出异常
+　　Class cls3 = Class.forName("Person");
+}
+
+  public static void main(String[] args) throws Exception {
+        
+        Class cls = Person.class;//获取Person类的字节码
+        
+        Constructor constructor1 = cls.getConstructor();//调用getConstructor()获取Person无参构造方法
+        Person p1 = (Person) constructor1.newInstance();//通过调用newInstance()来执行无参构造方法
+        
+        Constructor constructor2 = cls.getConstructor(int.class);//调用getConstructor(*.class)获取Person带参构造方法
+        Person p2 = (Person) constructor2.newInstance(1);//通过调用newInstance(int)来执行带参构造方法
+    }
+
+}
+
+class Person{    
+    public Person(){System.out.println("无参构造方法");}
+    public Person(int i){System.out.println("带参构造方法");}
+}

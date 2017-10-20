@@ -1,0 +1,2 @@
+@Primary的意思是在众多相同的bean中，优先使用用@Primary注解的bean.而@Qualifier这个注解则指定某个bean有没有资格进行注入，与@Autowired消除歧义
+

@@ -36,3 +36,5 @@ response.sendRedirect("test.jsp");
 
 2、当用sendRedirect重定向后，地址栏为http://localhost:8080/test/test.jsp
 因为这个时候，客户端已经知道了他第二次请求的是test.jsp，服务器已经告诉客户端要去访问test.jsp了，所以地址栏里会显示想要访问的结果。
+
+http://www.cnblogs.com/shenliang123/archive/2011/10/27/2226892.html

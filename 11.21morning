@@ -1,0 +1,3 @@
+对应mysql表的类的属性，在对外转化json的key不同时，可用gson的注解：@SerializedName("uid")
+	protected String userId;
+  uid表示用gson转化可显示的key，userId为普通转化及在mysql.xml中列名的对应（user_id）

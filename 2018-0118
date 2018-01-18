@@ -1,0 +1,43 @@
+@Async注解所在的方法在另外的类中的调用才能起作用的原因：
+
+原因：
+spring 在扫描bean的时候会扫描方法上是否包含@Transactional注解，如果包含，spring会为这个bean动态地生成一个子类（即代理类，proxy），
+代理类是继承原来那个bean的。此时，当这个有注解的方法被调用的时候，实际上是由代理类来调用的，代理类在调用之前就会启动transaction。
+然而，如果这个有注解的方法是被同一个类中的其他方法调用的，那么该方法的调用并没有通过代理类，而是直接通过原来的那个bean，所以就不会启动transaction，
+我们看到的现象就是@Transactional注解无效。
+
+为什么一个方法a()调用同一个类中另外一个方法b()的时候，b()不是通过代理类来调用的呢？可以看下面的例子（为了简化，用伪代码表示）：
+
+[java] view plain copy
+
+    @Service  
+    class A{  
+        @Transactinal  
+        method b(){...}  
+          
+        method a(){    //标记1  
+            b();  
+        }  
+    }  
+      
+    //Spring扫描注解后，创建了另外一个代理类，并为有注解的方法插入一个startTransaction()方法：  
+    class proxy$A{  
+        A objectA = new A();  
+        method b(){    //标记2  
+            startTransaction();  
+            objectA.b();  
+        }  
+      
+        method a(){    //标记3  
+            objectA.a();    //由于a()没有注解，所以不会启动transaction，而是直接调用A的实例的a()方法  
+        }  
+    }  
+
+
+当我们调用A的bean的a()方法的时候，也是被proxy$A拦截，执行proxy$A.a()（标记3），然而，由以上代码可知，这时候它调用的是objectA.a()，
+也就是由原来的bean来调用a()方法了，所以代码跑到了“标记1”。由此可见，“标记2”并没有被执行到，所以startTransaction()方法也没有运行。
+
+了解了失效的原因，解决的方法就简单了（两种）：
+
+    1.把这两个方法分开到不同的类中；
+    2.把注解加到类名上面；

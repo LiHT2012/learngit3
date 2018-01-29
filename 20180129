@@ -1,0 +1,53 @@
+1.默认构建器是唯一获得定义的,而且它的属性是 private,可防止对这个类的继承
+
+2.5 . 2 . 4   p r o t e c t e d :“友好的一种” 
+protected(受到保护的)访问指示符要求大家提前有所认识。首先应注意这样一个事实:为继续学习本书一
+直到继承那一章之前的内容,并不一定需要先理解本小节的内容。但为了保持内容的完整,这儿仍然要对此
+进行简要说明,并提供相关的例子。 
+protected 关键字为我们引入了一种名为“继承”的概念,它以现有的类为基础,并在其中加入新的成员,
+同时不会对现有的类产生影响——我们将这种现有的类称为“基础类”或者“基本类”(Base Class)。亦
+可改变那个类现有成员的行为。对于从一个现有类的继承,我们说自己的新类“扩展”(extends)了那个现
+有的类。如下所示: 
+class Foo extends Bar { 
+类定义剩余的部分看起来是完全相同的。 
+若新建一个包,并从另一个包内的某个类里继承,则唯一能够访问的成员就是原来那个包的 public 成员。当
+然,如果在相同的包里进行继承,那么继承获得的包能够访问所有“友好”的成员。有些时候,基础类的创
+建者喜欢提供一个特殊的成员,并允许访问衍生类。这正是 protected 的工作。若往回引用 5.2.2 小节
+“public:接口访问”的那个 Cookie.java 文件,则下面这个类就不能访问“友好”的成员: 
+ 
+//: ChocolateChip.java 
+// Can't access friendly member 
+// in another class 
+import c05.dessert.*; 
+ 
+public class ChocolateChip extends Cookie { 
+  public ChocolateChip() { 
+   System.out.println( 
+     "ChocolateChip constructor"); 
+  } 
+  public static void main(String[] args) { 
+    ChocolateChip x = new ChocolateChip(); 
+    //! x.foo(); // Can't access foo 
+  } 
+} ///: ̄ 
+ 
+对于继承,值得注意的一件有趣的事情是倘若方法 foo()存在于类 Cookie 中,那么它也会存在于从 Cookie
+继承的所有类中。但由于 foo()在外部的包里是“友好”的,所以我们不能使用它。当然,亦可将其变成
+public。但这样一来,由于所有人都能自由访问它,所以可能并非我们所希望的局面。若象下面这样修改类
+Cookie: 
+ 
+public class Cookie { 
+ 
+133  public Cookie() {  
+    System.out.println("Cookie constructor"); 
+  } 
+  protected void foo() { 
+    System.out.println("foo");  
+  } 
+} 
+ 
+那么仍然能在包 dessert 里“友好”地访问 foo(),但从 Cookie 继承的其他东西亦可自由地访问它。然而,
+它并非公共的(public)。
+
+
+3.

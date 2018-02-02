@@ -1,0 +1,16 @@
+1。@SerializedName("uid")
+protected String userId;
+当该类转成字符串时，userId将转化成uid
+
+2。
+org.springframework.scheduling.annotation.Scheduled
+@Scheduled(cron = "0/2 * * * * *")  
+public void timer(){  
+    //获取当前时间  
+    LocalDateTime localDateTime =LocalDateTime.now();  
+    System.out.println("当前时间为:" + localDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));  
+} 
+
+http://blog.csdn.net/liboyang71/article/details/72781526
+http://blog.csdn.net/yinghuacao_dong/article/details/74171727
+springboot定时器

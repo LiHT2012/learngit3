@@ -1,0 +1,6 @@
+ logstash是一个数据分析软件，主要目的是分析log日志。整一套软件可以当作一个MVC模型，
+ logstash是controller层，Elasticsearch是一个model层，kibana是view层。
+ 
+ 首先将数据传给logstash，它将数据进行过滤和格式化（转成JSON格式），然后传给Elasticsearch进行存储、建搜索的索引，
+ kibana提供前端的页面再进行搜索和图表可视化，它是调用Elasticsearch的接口返回的数据进行可视化。
+ logstash和Elasticsearch是用Java写的，kibana使用node.js框架。

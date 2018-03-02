@@ -1,0 +1,2 @@
+Calendar.getInstance().get(Calendar.HOUR_OF_DAY)---获取时间中的年月日等
+

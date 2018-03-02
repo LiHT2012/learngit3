@@ -1,0 +1,29 @@
+1.添加PRIMARY KEY（主键索引）：
+
+ALTER TABLE `table_name` ADD PRIMARY KEY ( `column` ) 
+
+2.添加UNIQUE(唯一索引) ：
+
+ALTER TABLE `table_name` ADD UNIQUE ( `column` ) 
+ 
+3.添加INDEX(普通索引) ：
+ALTER TABLE `table_name` ADD INDEX index_name ( `column` )
+ 
+4.添加FULLTEXT(全文索引) ：
+ALTER TABLE `table_name` ADD FULLTEXT ( `column`) 
+ 
+5.添加多列索引：
+ALTER TABLE `table_name` ADD INDEX index_name ( `column1`, `column2`, `column3` )
+
+查看索引：
+show index from 表名;#查看表的索引
+在workbench中，左侧表列表，每个表名右侧三个键中的i可查看详情
+
+workbench使用mysql：
+http://blog.csdn.net/z45689/article/details/54139396
+
+insert into dbc_daily_statistics (res_id, res_type, hour)
+    values ( #{resId,jdbcType=VARCHAR}, #{resType,jdbcType=INTEGER},  #{hour,jdbcType=INTEGER})
+    ON DUPLICATE KEY UPDATE pv = pv + 1，其中表dbc_daily_statistics的res_id+hour为组合的unique索引
+    ON DUPLICATE KEY UPDATE表示唯一索引有则更新，无则insert
+    

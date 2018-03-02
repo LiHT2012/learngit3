@@ -1,2 +1,36 @@
 Calendar.getInstance().get(Calendar.HOUR_OF_DAY)---获取时间中的年月日等
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.TimeZone;
+
+Calendar calendar = Calendar.getInstance();
+Date date = calendar.getTime();
+Long time = calendar.getTimeInMillis();//毫秒
+
+long millisecond
+Date time = new Date(millisecond);
+DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");//yyyy-MM-dd;yyyyMMddHHmmss年月日时分秒
+String formatTime = dateFormat.format(time);
+
+string.trim();//Returns a string whose value is this string, with any leading and trailing whitespace removed.
+
+
+
+×××××××
+mysql
+SELECT * from 表名 where 字段名 is NULL
+SELECT * from 表名 where ISNULL(字段名)
+SELECT * from 表名 where IFNULL(字段名,'0') = '0';
+效率：
+IFNULL()>is NULL>ISNULL()
+
+IFNULL(expr1,expr2)          
+如果expr1不是NULL，IFNULL()返回expr1，否则它返回expr2。
+
+IF(expr1,expr2,expr3)          
+如果expr1是TRUE(expr1<>0且expr1<>NULL)，那么IF()返回expr2，否则它返回expr3。
+
+SELECT CASE BINARY "B" when "a" then 1 when "b" then 2 END;

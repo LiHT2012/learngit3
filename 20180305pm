@@ -1,3 +1,39 @@
+mysql BIT_LENGTH()获取字符串的比特长度。
+
+需要注意的是，在获取中文字符串比特长度时，不同编码获取的比特长度不一样，请看下面两个实例：
+
+1. 在GBK 编码下：
+
+select bit_length('中国');  
+结果：32
+1个中文字符占2个字节，1个字节占8位，所以总bit比特长度32
+
+ 
+
+2.在UTF-8 编码下
+
+select bit_length('中国'); 
+结果：48
+1个中文字符占3个字节，1个字节占8位，所以总bit比特长度48 
+
+ 
+
+下面看一下非中文字符串实例：
+
+SELECT BIT_LENGTH(  'manong' )
+结果：48
+1个英文字符占1个字节，1个字节占8位，所以结果为48
+
+select sum(bit_length(data))/(1024*1024)
+        from senior_data
+        join (select two_dimension.second_ID from two_dimension where type = 221200 or type = 221201) two 
+        on senior_data.data_id = two.second_ID;
+
+
+
+
+
+
 http://blog.csdn.net/wyzxg/article/details/1630692
 sql的truncate和delete的区别：
 1、在功能上，truncate是清空一个表的内容，它相当于delete from table_name。

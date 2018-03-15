@@ -13,3 +13,8 @@ declare i int;
     set i=(select ifnull(max(asc_value),0) from short_long_linkmap) +1; 
 return i; 
 END
+
+xml中对function的调用
+<select id="getNextValue" resultType="java.lang.Integer">
+    select nextValue();
+</select>

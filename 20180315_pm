@@ -1,0 +1,15 @@
+mysql function示例：
+1）
+CREATE DEFINER=`dbcool`@`%` FUNCTION `newFloor`(resId varchar(24),resType smallint) RETURNS int(11)
+BEGIN
+UPDATE dbcool.dbc_floor  SET floor = @floor:=floor + 1  WHERE res_id = resId AND res_type = resType;
+RETURN @floor;
+END
+
+2）
+CREATE DEFINER=`dbcool`@`%` FUNCTION `nextValue`() RETURNS int(11)
+BEGIN
+declare i int;  
+    set i=(select ifnull(max(asc_value),0) from short_long_linkmap) +1; 
+return i; 
+END

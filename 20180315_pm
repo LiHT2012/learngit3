@@ -18,3 +18,9 @@ xml中对function的调用
 <select id="getNextValue" resultType="java.lang.Integer">
     select nextValue();
 </select>
+
+int i = 1<<6;//将1向左移6位后得的值赋值给i;右空位补0
+
+int n = (int)(4&7);//4和7的二进制格式按位与，结果再转成十进制
+
+number >>>=6;//number向右移动6位再赋值给number自身，等同于number=number>>6;

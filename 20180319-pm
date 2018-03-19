@@ -1,0 +1,25 @@
+@RequestMapping(value = "/qr/{shorturl}", method = RequestMethod.GET)
+	public void redirectwechatURL(@PathVariable String shorturl, HttpServletResponse response) throws IOException, GeneralException {
+		
+		Pattern pattern = null;
+		Matcher matcher = null;
+		pattern = Pattern.compile("[A-Za-z0-9\\+\\-]{11}");
+		matcher = pattern.matcher(shorturl);
+		if (!matcher.matches()) {
+			throw new GeneralException("illegal shorturl");
+		}
+1.url动态
+2.正则判断
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+3.域名获取 
+import java.net.URL;
+
+String longurl = param.get("longurl");
+URL url = new URL(longurl);
+String host = url.getHost();// 获取主机名
+if (!host.contains("factube") && !host.contains("data.me")) {
+  throw new GeneralException("the url is illegal");
+}
+
+

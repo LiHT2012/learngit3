@@ -1,0 +1,89 @@
+Gradle 提供了:
+一个像 Ant 一样的非常灵活的通用构建工具
+一种可切换的, 像 maven 一样的基于合约构建的框架
+支持强大的多工程构建
+支持强大的依赖管理(基于 ApacheIvy )
+支持已有的 maven 和 ivy 仓库
+支持传递性依赖管理, 而不需要远程仓库或者 pom.xml 或者 ivy 配置文件
+优先支持 Ant 式的任务和构建
+基于 groovy 的构建脚本
+有丰富的领域模型来描述你的构建
+
+Apache Software License (ASL)
+
+Gradle采用了与Maven相同的目录组织结构，你可以通过Spring Initializr网站(https://start.spring.io/)创建Spring Boot工程
+
+build.gradle文件：
+
+1.apply plugin: 'java' //使用java插件
+
+Java 插件引入了一个源集的概念。一个源集只是一组用于编译并一起执行的源文件。这些源文件可能包括 Java 源代码文件和资源文件。其他有一些插件添加了在源集里包含 Groovy 和 Scala 的源代码文件的能力。
+一个源集有一个相关联的编译类路径和运行时类路径。
+
+源集的一个用途是，把源文件进行逻辑上的分组，以描述它们的目的。例如，你可能会使用一个源集来定义一个集成测试套件，或者你可能会使用单独的源集来定义你的项目的 API 和实现类。
+
+Java 插件定义了两个标准的源集，分别是 main 和 test。main 源集包含你产品的源代码，它们将被编译并组装成一个 JAR 文件。test 源集包含你的单元测试的源代码，它们将被编译并使用 JUnit 或 TestNG 来执行。
+
+
+2.对于所有的Gradle项目来说，笔者都推荐使用Gradle Wrapper，甚至应该将其当做创建代码库之后的第一件事来做。使用Gradle Wrapper有以下好处：
+
+  1）不用安装gradle也能运行gradle
+  2）所有人使用相同的gradle版本
+
+在build.gradle中加入以下配置：
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.0'
+}
+
+3.在build.gradle中配置spring-boot插件，并引入Spring的Web组件，整个build.gradle如下：
+
+buildscript {
+ repositories {
+  jcenter()
+ }
+dependencies {
+ classpath("org.springframework.boot:spring-boot-gradle-plugin:1.5.2.RELEASE")
+ }
+}
+repositories {
+ jcenter()
+}
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+task wrapper(type: Wrapper) {
+ gradleVersion = '3.0'
+}
+dependencies {
+ compile("org.springframework.boot:spring-boot-starter-web")
+ testCompile("org.springframework.boot:spring-boot-starter-test")
+}
+
+4.创建Application类：
+./springboot/Application4EmvedTomcat.java
+
+
+5.在Gradle中配置IntelliJ IDEA插件，只需在build.gradle中配置：
+  apply plugin: 'idea'
+  然后运行：
+  ./gradlew idea
+  此时将生成后缀为ipr的IntelliJ IDEA工程文件，在IntelliJ IDEA中直接打开(Open)该文件即可。
+
+对于Eclipse，在build.gradle中增加以下配置：
+    apply plugin: 'eclipse'
+然后运行：
+./gradlew eclipse
+此时将生成Eclipse的.project工程文件
+
+所有IDE工程文件都不应该提交到代码库，对于Git来说应该将这些文件注册到.gitignore文件中。各个开发者拿到代码后需要各自运行./graldlw idea或./gradlew eclipse命令以生成本地工程文件。
+
+6.在biuld.gradle中增加checkstyle插件：
+apply plugin: 'checkstyle
+下载Google的checkstyle文件并将其拷贝为config/checkstyle/checkstyle.xml，Gradle的checkstyle插件默认将读取该配置文件。CheckStyle检查将包含在./gradlew build中。
+
+
+
+
+https://www.oschina.net/question/2270590_2274322?sort=time

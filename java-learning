@@ -1,3 +1,45 @@
+str.trim();//将字符串中的前导和尾随空格删除
+
+str.split("\\s+");//按空格,制表符，等进行拆分（也就是说它是按空白部分进行拆分，不管这个空白使用设么操作留下
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 1，接口中定义变量必须是public static final：http://blog.csdn.net/shiyf/article/details/40517651
 
 答：
@@ -34,9 +76,9 @@ Multiple markers at this line
 4，取出name2的值JSONObject对象；5，取出name4的值value2。
     示例中json数组格式的字符串可以通过方法直接转换为JSONArray的格式:JSONArray.fromObject(String)
 [java] view plain copy print?在CODE上查看代码片派生到我的代码片
-</pre><pre name="code" class="java">JSONArray getJsonArray=JSONArray.fromObject(arrayStr);//将结果转换成JSONArray对象的形式  
-JSONObject getJsonObj = getJsonArray.getJSONObject(0);//获取json数组中的第一项  
-String result=getJsonObj.getJSONObject("name1").getJSONObject("name2").getJSONObject("name4");  
+</pre><pre name="code" class="java">JSONArray getJsonArray=JSONArray.fromObject(arrayStr);//将结果转换成JSONArray对象的形式
+JSONObject getJsonObj = getJsonArray.getJSONObject(0);//获取json数组中的第一项
+String result=getJsonObj.getJSONObject("name1").getJSONObject("name2").getJSONObject("name4");
 
    好了我们说说这两个对象。
 1，JSONObject
@@ -46,15 +88,15 @@ String result=getJsonObj.getJSONObject("name1").getJSONObject("name2").getJSONOb
 
   Json对象中添加的是键值对，JSONArray中添加的是Json对象
 [java] view plain copy print?在CODE上查看代码片派生到我的代码片
-JSONObject Json = new JSONObject();  
-JSONArray JsonArray = new JSONArray();  
-  
-Json.put("key", "value");//JSONObject对象中添加键值对  
+JSONObject Json = new JSONObject();
+JSONArray JsonArray = new JSONArray();
+
+Json.put("key", "value");//JSONObject对象中添加键值对
 ##JSONObject用put添加键值对，也可.element("key",value);
 ##JSONArray用add添加对象Object，Object不用限定相同
 ##JSONObject和JSONArray的示例http://www.cnblogs.com/xwdreamer/archive/2011/12/16/2296904.html
 
-JsonArray.add(Json);//将JSONObject对象添加到Json数组中  
+JsonArray.add(Json);//将JSONObject对象添加到Json数组中
 
 3，JSONObject与Map
    Map map和json都是键值对，不同的是map中键值对中间用等号分开，json中键值对中间用冒号分开。其实json就是一种特殊形式的map。
@@ -62,40 +104,40 @@ JsonArray.add(Json);//将JSONObject对象添加到Json数组中
 Map<String,String> strmap=new JSONObject();
 
 4,spring 注解
-@Component,@Service,@Controller,@Repository注解的类，并把这些类纳入进spring容器中管理。 
-下面写这个是引入component的扫描组件 
-<context:component-scan base-package=”com.mmnc”>    
+@Component,@Service,@Controller,@Repository注解的类，并把这些类纳入进spring容器中管理。
+下面写这个是引入component的扫描组件
+<context:component-scan base-package=”com.mmnc”>
 
-其中base-package为需要扫描的包（含所有子包） 
-       1、@Service用于标注业务层组件 
-       2、@Controller用于标注控制层组件(如struts中的action) 
-       3、@Repository用于标注数据访问组件，即DAO组件. 
-       4、@Component泛指组件，当组件不好归类的时候，我们可以使用这个注解进行标注。    
-           @Service public class UserServiceImpl implements UserService { } 
-           @Repository public class UserDaoImpl implements UserDao { } 
+其中base-package为需要扫描的包（含所有子包）
+       1、@Service用于标注业务层组件
+       2、@Controller用于标注控制层组件(如struts中的action)
+       3、@Repository用于标注数据访问组件，即DAO组件.
+       4、@Component泛指组件，当组件不好归类的时候，我们可以使用这个注解进行标注。
+           @Service public class UserServiceImpl implements UserService { }
+           @Repository public class UserDaoImpl implements UserDao { }
  getBean的默认名称是类名（头字母小写），如果想自定义，可以@Service(“aaaaa”)这样来指定。
 这种bean默认是“singleton”的，如果想改变，可以使用@Scope(“prototype”)来改变。
 
 可以使用以下方式指定初始化方法和销毁方法：
 [java] view plain copy
 
-    @PostConstruct  
-    public void init() {   
-    }   
-    @PreDestroy  
-    public void destory() {   
-    }   
+    @PostConstruct
+    public void init() {
+    }
+    @PreDestroy
+    public void destory() {
+    }
 注入方式：
 
 把DAO实现类注入到action的service接口(注意不要是service的实现类)中，注入时不要new 这个注入的类，因为spring会自动注入，如果手动再new的话会出现错误，
-然后属性加上@Autowired后不需要getter()和setter()方法，Spring也会自动注入。  
+然后属性加上@Autowired后不需要getter()和setter()方法，Spring也会自动注入。
 
 在接口前面标上@Autowired注释使得接口可以被容器注入，如：
 [java] view plain copy
 
-    @Autowired  
-    @Qualifier("chinese")  
-    private Man man;   
+    @Autowired
+    @Qualifier("chinese")
+    private Man man;
 
 当接口存在两个实现类的时候必须使用@Qualifier指定注入哪个实现类，否则可以省略，只写@Autowired。
 
@@ -106,7 +148,7 @@ Map<String,String> strmap=new JSONObject();
 　　2. 如果指定了name，则从上下文中查找名称（id）匹配的bean进行装配，找不到则抛出异常
 　　3. 如果指定了type，则从上下文中找到类型匹配的唯一bean进行装配，找不到或者找到多个，都会抛出异常
 　　4. 如果既没有指定name，又没有指定type，则自动按照byName方式进行装配；如果没有匹配，则回退为一个原始类型进行匹配，如果匹配则自动装配；
-  
+
 Spring 容器中的 Bean 是有生命周期的，Spring 允许在 Bean 在初始化完成后以及 Bean 销毁前执行特定的操作，
 您既可以通过实现 InitializingBean/DisposableBean 接口来定制初始化之后 / 销毁之前的操作方法，
 也可以通过 <bean> 元素的 init-method/destroy-method 属性指定初始化之后 / 销毁之前调用的操作方法

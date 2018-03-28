@@ -1,0 +1,8 @@
+crontab -e //打开任务编辑页面
+
+编辑任务
+分 时 天  日 月 星期    command
+*/2  *  *  *  *  *      date >> /home/dbc-intern5/code/xuwenhua.txt(表示每半分钟将时间写入文本)
+
+dirlist/simple
+{number=0, sequence=desc, offset=0, type=131300, firstId=593125d04a57c45700e41af3}

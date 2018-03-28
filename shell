@@ -5,3 +5,50 @@ chmod +x ./test.sh  #使脚本具有执行权限
 ./test.sh  #执行脚本
 
  ./test.sh 告诉系统说，就在当前目录找。
+
+ #!/bin/sh
+ eval $1 1 > $2
+ RETVAL=$?
+ exit ${RETVAL}
+
+ //注释
+$1表示脚本的第一个参数，对应一个可执行命令。
+eval $1 1 表示执行该命令，带一个参数1
+
+$2表示一个结果文件，用于保存执行命令的结果。
+
+$?用于取得上一条命令的执行结果，shell中0表示成功，非0表示失败。
+exit ${RETVAL} 表示以执行结果为脚本的退出码
+
+/**
+file=$PWD/dbc-api/CATALINA_PID
+if [ ! -f "$file" ]; then
+   echo 'tomcat has been stopped'
+else
+   echo 'pid file dose not exit'
+   killPid $PWD/CATALINA_PID
+   rm -rf $PWD/CATALINA_PID
+fi
+**/
+
+
+
+
+
+killPid () {
+  if [ ! -z "$1" ]; then//表示判断第一个输入的参数是否为空字符串
+  if [ -f "$1" ]; then//？？将一个文件普通名传给传给$1，并判断这个文件是否存在
+    if [ -s "$1" ]; then
+      if [ -r "$1" ]; then
+        PID=`cat "$1"`
+        ps -p $PID >/dev/null 2>&1
+        if [ $? -eq 0 ] ; then
+          echo "Tomcat appears to still be running with PID $PID. Now kill the process."
+          ps -f -p $PID
+          kill -9 $PID
+        fi
+      fi
+    fi
+  fi
+fi
+}

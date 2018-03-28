@@ -1,6 +1,6 @@
 @RequestMapping(value = "/qr/{shorturl}", method = RequestMethod.GET)
 	public void redirectwechatURL(@PathVariable String shorturl, HttpServletResponse response) throws IOException, GeneralException {
-		
+
 		Pattern pattern = null;
 		Matcher matcher = null;
 		pattern = Pattern.compile("[A-Za-z0-9\\+\\-]{11}");
@@ -8,11 +8,16 @@
 		if (!matcher.matches()) {
 			throw new GeneralException("illegal shorturl");
 		}
+
+×××重定向
+response.sendRedirect(longurl);
+void javax.servlet.http.HttpServletResponse.sendRedirect(String location) throws IOException
+
 1.url动态
 2.正则判断
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-3.域名获取 
+3.域名获取
 import java.net.URL;
 
 String longurl = param.get("longurl");
@@ -22,4 +27,10 @@ if (!host.contains("factube") && !host.contains("data.me")) {
   throw new GeneralException("the url is illegal");
 }
 
+@Component("ExcelImportMesTempBean")
+给类起名，可通过类名获取bean
 
+netstat -tunlp
+netstat -tunlp用于显示tcp，udp的端口和进程等相关情况
+
+netstat -tunlp|grep 端口号，用于查看指定端口号的进程情况，如查看22端口的情况，netstat -tunlp|grep 22

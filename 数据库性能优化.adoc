@@ -1,0 +1,559 @@
+计算机系统硬件性能从高到代依次为：
+CPU——Cache(L1-L2-L3)——内存——SSD硬盘——网卡——硬盘
+
+每种硬件主要的工作内容：
+CPU及内存：缓存数据访问、比较、排序、事务检测、SQL解析、函数或逻辑运算；
+网络：结果数据传输、SQL请求、远程数据库访问（dblink）；
+硬盘：数据访问、数据写入、日志记录、大数据量排序、大表连接
+
+优化法则归纳为5个层次：
+优化法则      性能提升效果      优化成本
+
+减少数据访问    1~1000           低
+
+返回更少数据    1~100           低
+
+减少交互次数    1~20            低
+
+减少服务器CPU开销  1~5           低
+
+利用更多资源      @~10          高
+
+oracle
+数据块block是数据库中数据在磁盘中存储的最小单位，也是一次IO访问的最小单位，一个数据块通常可以存储多条记录，
+数据块大小是DBA在创建数据库或表空间时指定，可指定为2K、4K、8K、16K或32K字节。
+下图是一个Oracle数据库典型的物理结构，一个数据库可以包括多个数据文件，一个数据文件内又包含多个数据块
+
+
+ROWID
+ROWID是每条记录在数据库中的唯一标识，通过ROWID可以直接定位记录到对应的文件号及数据块位置。
+ROWID内容包括文件号、对像号、数据块号、记录槽号
+
+
+SQL什么条件不会使用索引？
+
+查询条件                                不能使用索引原因
+INDEX_COLUMN <> ?
+INDEX_COLUMN not in (?,?,...,?)       不等于操作不能使用索引
+
+function(INDEX_COLUMN) = ?
+INDEX_COLUMN + 1 = ?
+INDEX_COLUMN || 'a' = ?               经过普通运算或函数运算后的索引字段不能使用索引
+
+INDEX_COLUMN like '%'||?
+INDEX_COLUMN like '%'||?||'%'         含前导模糊查询的Like语法不能使用索引
+
+INDEX_COLUMN is null                  B-TREE索引里不保存字段为NULL值记录，因此IS NULL不能使用索引
+
+NUMBER_INDEX_COLUMN='12345'           Oracle在做数值比较时需要将两边的数据转换成同一种数据类型，
+CHAR_INDEX_COLUMN=12345               如果两边数据类型不同时会对字段值隐式转换，相当于加了一层函数处理，所以不能使用索引。
+
+a.INDEX_COLUMN=a.COLUMN_1             给索引查询的值应是已知数据，不能是未知字段值。
+
+我们一般在什么字段上建索引？
+这是一个非常复杂的话题，需要对业务及数据充分分析后再能得出结果。主键及外键通常都要有索引，其它需要建索引的字段应满足以下条件：
+1、字段出现在查询条件中，并且查询条件可以使用索引；
+2、语句执行频率高，一天会有几千次以上；
+3、通过字段条件可筛选的记录集很小，那数据筛选比例是多少才适合？
+这个没有固定值，需要根据表数据量来评估，以下是经验公式，可用于快速评估：
+小表(记录数小于10000行的表)：筛选比例<10%；
+大表：(筛选返回记录数)<(表总记录数*单条记录长度)/10000/16
+      单条记录长度≈字段平均内容长度之和+字段数*2
+
+直接通过rownum分页：
+select * from (
+         select a.*,rownum rn from
+                   (select * from product a where company_id=? order by status) a
+         where rownum<=20)
+where rn>10;
+数据访问开销=索引IO+索引全部记录结果对应的表数据IO
+
+采用rowid分页语法
+优化原理是通过纯索引找出分页记录的ROWID，再通过ROWID回表返回数据，要求内层查询和排序字段全在索引里。
+create index myindex on product(company_id,status);
+
+select b.* from (
+         select * from (
+                   select a.*,rownum rn from
+                            (select rowid rid,status from product a where company_id=? order by status) a
+                   where rownum<=20)
+         where rn>10) a, product b
+where a.rid=b.rowid;
+数据访问开销=索引IO+索引分页结果对应的表数据IO
+
+实例：
+一个公司产品有1000条记录，要分页取其中20个产品，假设访问公司索引需要50个IO，2条记录需要1个表数据IO。
+那么按第一种ROWNUM分页写法，需要550(50+1000/2)个IO，按第二种ROWID分页写法，只需要60个IO(50+20/2);
+
+nsert操作加大Batch可以对性能提高近8倍性能，一般根据主键的Update或Delete操作也可能提高2-3倍性能，但不如Insert明显，因为Update及Delete操作可能有比较大的开销在物理IO访问。
+以上仅是理论计算值，实际情况需要根据具体环境测量,大约一次处理100/1000时稳定较好。
+
+首先大部份数据库都会有SQL长度和IN里个数的限制，如ORACLE的IN里就不允许超过1000个值。
+另外当前数据库一般都是采用基于成本的优化规则，当IN数量达到一定值时有可能改变SQL执行计划，从索引访问变成全表访问，这将使性能急剧变化。随着SQL中IN的里面的值个数增加，SQL的执行计划会更复杂，占用的内存将会变大，这将会增加服务器CPU及内存成本。
+评估在IN里面一次放多少个值还需要考虑应用服务器本地内存的开销，有并发访问时要计算本地数据使用周期内的并发上限，否则可能会导致内存溢出。
+综合考虑，一般IN里面的值个数超过20个以后性能基本没什么太大变化，也特别说明不要超过100，超过后可能会引起执行计划的不稳定性及增加数据库CPU及内存成本，这个需要专业DBA评估。
+
+当我们采用select从数据库查询数据时，数据默认并不是一条一条返回给客户端的，也不是一次全部返回客户端的，而是根据客户端fetch_size参数处理，
+每次只返回fetch_size条记录，当客户端游标遍历到尾部时再从服务端取数据，直到最后全部传送完成。
+所以如果我们要从服务端一次取大量数据时，可以加大fetch_size，这样可以减少结果数据传输的交互次数及服务器数据准备时间，提高性能。
+
+
+Oracle jdbc fetchsize默认值为10，由上测试可以看出fetchsize对性能影响还是比较大的，但是当fetchsize大于100时就基本上没有
+影响了。fetchsize并不会存在一个最优的固定值，因为整体性能与记录集大小及硬件平台有关。根据测试结果建议当一次性要取大量数据时
+这个值设置为100左右，不要小于40。注意，fetchsize不能设置太大，如果一次取出的数据大于JVM的内存会导致内存溢出，
+所以建议不要超过1000，太大了也没什么性能提高，反而可能会增加内存溢出的危险。
+
+大型数据库一般都支持存储过程，合理的利用存储过程也可以提高系统性能。如你有一个业务需要将A表的数据做一些加工然后更新到B表中，
+但是又不可能一条SQL完成，这时你需要如下3步操作：
+a：将A表数据全部取出到客户端；
+b：计算出要更新的数据；
+c：将计算结果更新到B表。
+
+如果采用存储过程你可以将整个业务逻辑封装在存储过程里，然后在客户端直接调用存储过程处理，这样可以减少网络交互的成本。
+当然，存储过程也并不是十全十美，存储过程有以下缺点：
+a、不可移植性，每种数据库的内部编程语法都不太相同，当你的系统需要兼容多种数据库时最好不要用存储过程。
+b、学习成本高，DBA一般都擅长写存储过程，但并不是每个程序员都能写好存储过程，除非你的团队有较多的开发人员熟悉写存储过程，否则后期系统维护会产生问题。
+c、业务逻辑多处存在，采用存储过程后也就意味着你的系统有一些业务逻辑不是在应用程序里处理，这种架构会增加一些系统维护和调试成本。
+d、存储过程和常用应用程序语言不一样，它支持的函数及语法有可能不能满足需求，有些逻辑就只能通过应用程序处理。
+e、如果存储过程中有复杂运算的话，会增加一些数据库服务端的处理成本，对于集中式数据库可能会导致系统可扩展性问题。
+f、为了提高性能，数据库会把存储过程代码编译成中间运行代码(类似于java的class文件)，所以更像静态语言。当存储过程引用的对像(表、视图等等)结构改变后，存储过程需要重新编译才能生效，在24*7高并发应用场景，一般都是在线变更结构的，所以在变更的瞬间要同时编译存储过程，这可能会导致数据库瞬间压力上升引起故障(Oracle数据库就存在这样的问题)。
+
+个人观点：普通业务逻辑尽量不要使用存储过程，定时性的ETL任务或报表统计函数可以根据团队资源情况采用存储过程处理。
+
+
+  ×××××××3.6、使用ResultSet游标处理记录
+{
+  现在大部分Java框架都是通过jdbc从数据库取出数据，然后装载到一个list里再处理，list里可能是业务Object，也可能是hashmap。
+  由于JVM内存一般都小于4G，所以不可能一次通过sql把大量数据装载到list里。为了完成功能，很多程序员喜欢采用分页的方法处理，如一次从数据库取1000条记录，通过多次循环搞定，保证不会引起JVM Out of memory问题。
+
+  以下是实现此功能的代码示例，t_employee表有10万条记录，设置分页大小为1000：
+
+  d1 = Calendar.getInstance().getTime();
+  vsql = "select count(*) cnt from t_employee";
+  pstmt = conn.prepareStatement(vsql);
+  ResultSet rs = pstmt.executeQuery();
+  Integer cnt = 0;
+  while (rs.next()) {
+           cnt = rs.getInt("cnt");
+  }
+  Integer lastid=0;
+  Integer pagesize=1000;
+  System.out.println("cnt:" + cnt);
+  String vsql = "select count(*) cnt from t_employee";
+  PreparedStatement pstmt = conn.prepareStatement(vsql);
+  ResultSet rs = pstmt.executeQuery();
+  Integer cnt = 0;
+  while (rs.next()) {
+           cnt = rs.getInt("cnt");
+  }
+  Integer lastid = 0;
+  Integer pagesize = 1000;
+  System.out.println("cnt:" + cnt);
+  for (int i = 0; i <= cnt / pagesize; i++) {
+           vsql = "select * from (select * from t_employee where id>? order by id) where rownum<=?";
+           pstmt = conn.prepareStatement(vsql);
+           pstmt.setFetchSize(1000);
+           pstmt.setInt(1, lastid);
+           pstmt.setInt(2, pagesize);
+           rs = pstmt.executeQuery();
+           int col_cnt = rs.getMetaData().getColumnCount();
+           Object o;
+           while (rs.next()) {
+                     for (int j = 1; j <= col_cnt; j++) {
+                              o = rs.getObject(j);
+                     }
+                     lastid = rs.getInt("id");
+           }
+           rs.close();
+           pstmt.close();
+  }
+
+  以上代码实际执行时间为6.516秒
+
+  很多持久层框架为了尽量让程序员使用方便，封装了jdbc通过statement执行数据返回到resultset的细节，导致程序员会想采用分页的方式处理问题。实际上如果我们采用jdbc原始的resultset游标处理记录，在resultset循环读取的过程中处理记录，这样就可以一次从数据库取出所有记录。显著提高性能。
+  这里需要注意的是，采用resultset游标处理记录时，应该将游标的打开方式设置为FORWARD_READONLY模式(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)，否则会把结果缓存在JVM里，造成JVM Out of memory问题。
+
+  代码示例：
+
+  String vsql ="select * from t_employee";
+  PreparedStatement pstmt = conn.prepareStatement(vsql,ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY);
+  pstmt.setFetchSize(100);
+  ResultSet rs = pstmt.executeQuery(vsql);
+  int col_cnt = rs.getMetaData().getColumnCount();
+  Object o;
+  while (rs.next()) {
+           for (int j = 1; j <= col_cnt; j++) {
+                     o = rs.getObject(j);
+           }
+  }
+  调整后的代码实际执行时间为3.156秒
+
+  从测试结果可以看出性能提高了1倍多，如果采用分页模式数据库每次还需发生磁盘IO的话那性能可以提高更多。
+  iBatis等持久层框架考虑到会有这种需求，所以也有相应的解决方案，在iBatis里我们不能采用queryForList的方法，而应用该采用queryWithRowHandler加回调事件的方式处理，如下所示：
+
+  MyRowHandler myrh=new MyRowHandler();
+  sqlmap.queryWithRowHandler("getAllEmployee", myrh);
+
+  class MyRowHandler implements RowHandler {
+      public void handleRow(Object o) {
+         //todo something
+      }
+  }
+
+  iBatis的queryWithRowHandler很好的封装了resultset遍历的事件处理，效果及性能与resultset遍历一样，也不会产生JVM内存溢出。
+
+}
+
+减少数据库服务器cpu运算
+1.使用绑定变量
+绑定变量是指SQL中对变化的值采用变量参数的形式提交，而不是在SQL中直接拼写对应的值。
+非绑定变量写法：Select * from employee where id=1234567
+绑定变量写法：
+Select * from employee where id=?
+Preparestatement.setInt(1,1234567)
+
+Java中Preparestatement就是为处理绑定变量提供的对像，绑定变量有以下优点：
+1、防止SQL注入
+2、提高SQL可读性
+3、提高SQL解析性能，不使用绑定变更我们一般称为硬解析，使用绑定变量我们称为软解析。
+
+当一条SQL发送给数据库服务器后，系统首先会将SQL字符串进行hash运算，得到hash值后再从服务器内存里的SQL缓存区中进行检索，如果有相同的SQL字符，并且确认是同一逻辑的SQL语句，则从共享池缓存中取出SQL对应的执行计划，根据执行计划读取数据并返回结果给客户端。
+如果在共享池中未发现相同的SQL则根据SQL逻辑生成一条新的执行计划并保存在SQL缓存区中，然后根据执行计划读取数据并返回结果给客户端。
+为了更快的检索SQL是否在缓存区中，首先进行的是SQL字符串hash值对比，如果未找到则认为没有缓存，如果存在再进行下一步的准确对比，所以要命中SQL缓存区应保证SQL字符是完全一致，中间有大小写或空格都会认为是不同的SQL。
+如果我们不采用绑定变量，采用字符串拼接的模式生成SQL,那么每条SQL都会产生执行计划，这样会导致共享池耗尽，缓存命中率也很低。
+
+一些不使用绑定变量的场景：
+a、数据仓库应用，这种应用一般并发不高，但是每个SQL执行时间很长，SQL解析的时间相比SQL执行时间比较小，绑定变量对性能提高不明显。数据仓库一般都是内部分析应用，所以也不太会发生SQL注入的安全问题。
+b、数据分布不均匀的特殊逻辑，如产品表，记录有1亿，有一产品状态字段，上面建有索引，有审核中，审核通过，审核未通过3种状态，其中审核通过9500万，审核中1万，审核不通过499万。
+
+2、合理使用排序
+Oracle的排序算法一直在优化，但是总体时间复杂度约等于nLog(n)。普通OLTP系统排序操作一般都是在内存里进行的，对于数据库来说是一种CPU的消耗，曾在PC机做过测试，单核普通CPU在1秒钟可以完成100万条记录的全内存排序操作，所以说由于现在CPU的性能增强，对于普通的几十条或上百条记录排序对系统的影响也不会很大。但是当你的记录集增加到上万条以上时，你需要注意是否一定要这么做了，大记录集排序不仅增加了CPU开销，而且可能会由于内存不足发生硬盘排序的现象，当发生硬盘排序时性能会急剧下降，这种需求需要与DBA沟通再决定，取决于你的需求和数据，所以只有你自己最清楚，而不要被别人说排序很慢就吓倒。
+以下列出了可能会发生排序操作的SQL语法：
+Order by
+Group by
+Distinct
+Exists子查询
+Not Exists子查询
+In子查询
+Not In子查询
+Union（并集），Union All也是一种并集操作，但是不会发生排序，如果你确认两个数据集不需要执行去除重复数据操作，那请使用Union All 代替Union。
+Minus（差集）
+Intersect（交集）
+Create Index
+Merge Join，这是一种两个表连接的内部算法，执行时会把两个表先排序好再连接，应用于两个大表连接的操作。如果你的两个表连接的条件都是等值运算，那可以采用Hash Join来提高性能，因为Hash Join使用Hash 运算来代替排序的操作
+
+3.减少比较操作
+
+Like模糊查询，如下所示：
+a like ‘%abc%’
+
+Like模糊查询对于数据库来说不是很擅长，特别是你需要模糊检查的记录有上万条以上时，性能比较糟糕，这种情况一般可以采用专用Search或者采用全文索引方案来提高性能。
+不能使用索引定位的大量In List，如下所示：
+a in (:1,:2,:3,…,:n)   ----n>20
+如果这里的a字段不能通过索引比较，那数据库会将字段与in里面的每个值都进行比较运算，如果记录数有上万以上，会明显感觉到SQL的CPU开销加大，这个情况有两种解决方式：
+a、  将in列表里面的数据放入一张中间小表，采用两个表Hash Join关联的方式处理；
+b、  采用str2varList方法将字段串列表转换一个临时表处理，关于str2varList方法可以在网上直接查询，这里不详细介绍。
+
+以上两种解决方案都需要与中间表Hash Join的方式才能提高性能，如果采用了Nested Loop的连接方式性能会更差。
+如果发现我们的系统IO没问题但是CPU负载很高，就有可能是上面的原因，这种情况不太常见，如果遇到了最好能和DBA沟通并确认准确的原因。
+5.1客户端多进程并行访问
+何设置并行数的基本建议：
+如果瓶颈在服务器主机，但是主机还有空闲资源，那么最大并行数取主机CPU核数和主机提供数据服务的磁盘数两个参数中的最小值，同时要保证主机有资源做其它任务。
+如果瓶颈在客户端处理，但是客户端还有空闲资源，那建议不要增加SQL的并行，而是用一个进程取回数据后在客户端起多个进程处理即可，进程数根据客户端CPU核数计算。
+如果瓶颈在客户端网络，那建议做数据压缩或者增加多个客户端，采用map reduce的架构处理。
+如果瓶颈在服务器网络，那需要增加服务器的网络带宽或者在服务端将数据压缩后再处理了。
+
+5.2数据库并行
+并不是所有的SQL都可以使用并行处理，一般只有对表或索引进行全部访问时才可以使用并行。数据库表默认是不打开并行访问，所以需要指定SQL并行的提示，如下所示：
+select /*+parallel(a,4)*/ * from employee;
+
+并行的优点：
+使用多进程处理，充分利用数据库主机资源（CPU,IO），提高性能。
+并行的缺点：
+1、单个会话占用大量资源，影响其它会话，所以只适合在主机负载低时期使用；
+2、只能采用直接IO访问，不能利用缓存数据，所以执行前会触发将脏缓存数据写入磁盘操作。
+
+注：
+1、并行处理在OLTP类系统中慎用，使用不当会导致一个会话把主机资源全部占用，而正常事务得不到及时响应，所以一般只是用于数据仓库平台。
+2、一般对于百万级记录以下的小表采用并行访问性能并不能提高，反而可能会让性能更差。
+
+
+sql优化是针对程序员的，而不是针对dba的，主要就是：
+第一，尽量防止模糊，明确指出，即用列名代替*，
+第二，在where语句上下工夫，尽量where代替having组函数
+。第三多表查询和子查询，尽量多表查询代替子查询，
+第四尽量使用绑定。
+oracle语句解析从右向左。
+
+
+1. 在业务密集的SQL当中尽量不采用IN操作符，用EXISTS 方案代替
+
+2. NOT IN操作符 此操作是强列不推荐使用的，因为它不能应用表的索引。
+推荐方案：用NOT EXISTS 方案代替
+
+3. 用其它相同功能的操作运算代替，如：a is not null 改为 a>0 或a>’’等。不允许字段为空，而用一个缺省值代替空值，
+如申请中状态字段不允许为空，缺省为申请。
+
+4. 大于或小于操作符一般情况下是不用调整的，因为它有索引就会采用索引查找，但有的情况下可以对它进行优化，如一个表有100万记录，
+一个数值型字段A，30万记录的A=0，30万记录的A=1，39万记录的A=2，1万记录的A=3。那么执行A>2与A>=3的效果就有很大的区别了，
+因为A>2时ORACLE会先找出为2的记录索引再进行比较，而A>=3时ORACLE则直接找到=3的记录索引。
+
+5. 由于通配符(%)在搜寻词首出现，所以Oracle系统不使用last_name的索引。在很多情况下可能无法避免这种情况，但是一定要心中有底，
+通配符如此使用会降低查询速度。然而当通配符出现在字符串其他位置时，优化器就能利用索引。
+
+6. UNION在进行表链接后会筛选掉重复的记录，所以在表链接后会对所产生的结果集进行排序运算，删除重复的记录再返回结果。实际大部分应用中是不会产生重复的记录，最常见的是过程表与历史表UNION。如：
+select * from gc_dfys
+union
+select * from ls_jg_dfys
+这个SQL在运行时先取出两个表的结果，再用排序空间进行排序删除重复的记录，最后返回结果集，如果表数据量大的话可能会导致用磁盘进行排序。
+
+推荐方案：采用UNION ALL操作符替代UNION，因为UNION ALL操作只是简单的将两个结果合并后就返回。
+
+select * from gc_dfys
+union all
+select * from ls_jg_dfys
+
+7. 对于有联接的列，即使最后的联接值为一个静态值，优化器是不会使用索引的。我们一起来看一个例子，假定有一个职工表(employee)，对于一个职工的姓和名分成两列存放(FIRST_NAME和LAST_NAME)，现在要查询一个叫比尔.克林顿(Bill Cliton)的职工。
+
+下面是一个采用联接查询的SQL语句：
+
+select * from employss where first_name||''||last_name ='Beill Cliton';
+
+上面这条语句完全可以查询出是否有Bill Cliton这个员工，但是这里需要注意，系统优化器对基于last_name创建的索引没有使用。当采用下面这种SQL语句的编写，Oracle系统就可以采用基于last_name创建的索引。
+
+*** where first_name ='Beill' and last_name ='Cliton';
+
+8. ... where status <>'INVALID';
+
+对这个查询，可以改写为不使用NOT：
+
+select * from employee where salary<3000 or salary>3000;
+
+虽然这两种查询的结果一样，但是第二种查询方案会比第一种查询方案更快些。第二种查询允许Oracle对salary列使用索引，而第一种查询则不能使用索引。
+
+
+9. 如果将SQL的字符串及格式写得完全相同，则ORACLE只会分析一次，共享内存也只会留下一次的分析结果，这不仅可以减少分析SQL的时间，而且可以减少共享内存重复的信息，ORACLE也可以准确统计SQL的执行频率。
+
+例：
+trunc(sk_rq)=trunc(sysdate)， 优化处理：sk_rq>=trunc(sysdate) and sk_rq<trunc(sysdate+1)
+hbs_bh=5401002554，优化处理：hbs_bh=’ 5401002554’，注：此条件对hbs_bh 进行隐式的to_number转换，因为hbs_bh字段是字符型。
+
+（1） 选择最有效率的表名顺序(只在基于规则的优化器中有效)：
+
+ORACLE 的解析器按照从右到左的顺序处理FROM子句中的表名，FROM子句中写在最后的表(基础表 driving table)将被最先处理，在FROM子句中包含多个表的情况下,你必须选择记录条数最少的表作为基础表。如果有3个以上的表连接查询, 那就需要选择交叉表(intersection table)作为基础表, 交叉表是指那个被其他表所引用的表.
+
+（2） WHERE子句中的连接顺序：
+
+ORACLE采用自下而上的顺序解析WHERE子句,根据这个原理,表之间的连接必须写在其他WHERE条件之前, 那些可以过滤掉最大数量记录的条件必须写在WHERE子句的末尾.
+
+？？（5） 在SQL*Plus , SQL*Forms和Pro*C中重新设置ARRAYSIZE参数, 可以增加每次数据库访问的检索数据量 ,建议值为200。
+
+？？（6） 使用DECODE函数来减少处理时间：
+
+使用DECODE函数可以避免重复扫描相同记录或重复连接相同的表.
+
+最高效的删除重复记录方法 ( 因为使用了ROWID)例子：
+DELETE  FROM  EMP E  WHERE  E.ROWID > (SELECT MIN(X.ROWID) FROM  EMP X  WHERE  X.EMP_NO = E.EMP_NO)。
+
+9） 用TRUNCATE替代DELETE：
+
+当删除表中的记录时,在通常情况下, 回滚段(rollback segments ) 用来存放可以被恢复的信息. 如果你没有COMMIT事务,ORACLE会将数据恢复到删除之前的状态(准确地说是恢复到执行删除命令之前的状况) 而当运用TRUNCATE时, 回滚段不再存放任何可被恢复的信息.当命令运行后,数据不能被恢复.因此很少的资源被调用,执行时间也会很短. (译者按: TRUNCATE只在删除全表适用,TRUNCATE是DDL不是DML) 。
+
+（10） 尽量多使用COMMIT：
+
+只要有可能,在程序中尽量多使用COMMIT, 这样程序的性能得到提高,需求也会因为COMMIT所释放的资源而减少，COMMIT所释放的资源:
+a. 回滚段上用于恢复数据的信息.
+b. 被程序语句获得的锁
+c. redo log buffer 中的空间
+d. ORACLE为管理上述3种资源中的内部花费
+
+（11）避免使用HAVING子句, HAVING 只会在检索出所有记录之后才对结果集进行过滤. 这个处理需要排序,总计等操作.
+如果能通过WHERE子句限制记录的数目,那就能减少这方面的开销. (非oracle中)on、where、having这三个都可以加条件的子句中，
+on是最先执行，where次之，having最后，因为on是先把不符合条件的记录过滤后才进行统计，它就可以减少中间运算要处理的数据，
+按理说应该速度是最快的，where也应该比having快点的，因为它过滤数据后才进行sum，在两个表联接时才用on的，
+所以在一个表的时候，就剩下where跟having比较了。在这单表查询统计的情况下，如果要过滤的条件没有涉及到要计算字段，
+那它们的结果是一样的，只是where可以使用rushmore技术，而having就不能，在速度上后者要慢如果要涉及到计算的字 段，
+就表示在没计算之前，这个字段的值是不确定的，根据上篇写的工作流程，where的作用时间是在计算之前就完成的，
+而having就是在计算后才起作 用的，所以在这种情况下，两者的结果会不同。在多表联接查询时，on比where更早起作用。
+系统首先根据各个表之间的联接条件，把多个表合成一个临时表 后，再由where进行过滤，然后再计算，计算完后再由having进行过滤。
+由此可见，要想过滤条件起到正确的作用，首先要明白这个条件应该在什么时候起作用，然后再决定放在那里。
+
+（15）在许多基于基础表的查询中,为了满足一个条件,往往需要对另一个表进行联接.在这种情况下, 使用EXISTS(或NOT EXISTS)通常将提高查询的效率. 在子查询中,NOT IN子句将执行一个内部的排序和合并. 无论在哪种情况下,NOT IN都是最低效的 (因为它对子查询中的表执行了一个全表遍历). 为了避免使用NOT IN ,我们可以把它改写成外连接(Outer Joins)或NOT EXISTS。
+例子：
+（高效）SELECT * FROM  EMP (基础表)  WHERE  EMPNO > 0  AND  EXISTS (SELECT ‘X'  FROM DEPT  WHERE  DEPT.DEPTNO = EMP.DEPTNO  AND  LOC = ‘MELB')
+(低效)SELECT  * FROM  EMP (基础表)  WHERE  EMPNO > 0  AND  DEPTNO IN(SELECT DEPTNO  FROM  DEPT  WHERE  LOC = ‘MELB')
+
+定期的重构索引是有必要的：
+ALTER  INDEX <INDEXNAME> REBUILD <TABLESPACENAME>
+
+（18）用EXISTS替换DISTINCT：
+
+当提交一个包含一对多表信息(比如部门表和雇员表)的查询时,避免在SELECT子句中使用DISTINCT. 一般可以考虑用EXIST替换, EXISTS 使查询更为迅速,因为RDBMS核心模块将在子查询的条件一旦满足后,立刻返回结果. 例子：
+(低效):
+SELECT  DISTINCT  DEPT_NO,DEPT_NAME  FROM  DEPT D , EMP E WHERE  D.DEPT_NO = E.DEPT_NO
+(高效):
+SELECT  DEPT_NO,DEPT_NAME  FROM  DEPT D  WHERE  EXISTS ( SELECT ‘X'  FROM  EMP E  WHERE E.DEPT_NO = D.DEPT_NO);
+
+（19）避免在索引列上使用NOT，通常我们要避免在索引列上使用NOT, NOT会产生在和在索引列上使用函数相同的影响. 当ORACLE”遇到”NOT,他就会停止使用索引转而执行全表扫描。
+
+（20）用UNION替换OR (适用于索引列)
+
+通常情况下, 用UNION替换WHERE子句中的OR将会起到较好的效果. 对索引列使用OR将造成全表扫描.
+ 注意, 以上规则只针对多个索引列有效. 如果有column没有被索引, 查询效率可能会因为你没有选择OR而降低.
+
+（32） a. 如果检索数据量超过30%的表中记录数.使用索引将没有显著的效率提高. b. 在特定情况下, 使用索引也许会比全表扫描慢, 但这是同一个数量级上的区别. 而通常情况下,使用索引比全表扫描要块几倍乃至几千倍!
+
+count(column) 是表示结果集中有多少个column字段不为空的记录
+count(*) 是表示整个结果集有多少条记录
+
+只要一条 SQL 语句需要进行排序操作，都会显示“Using filesort”，这并不表示就会有文件排序操作。
+当我们还存在 order by 操作的时候，select 子句中的字段多少会在很大程度上影响到我们的排序效率。
+
+1,尽量用 join 代替子查询
+虽然 Join 性能并不佳，但是和 MySQL 的子查询比起来还是有非常大的性能优势。MySQL 的子查询执行计划一直存在较大的问题
+
+***
+explain显示了mysql如何使用索引来处理select语句以及连接表。可以帮助选择更好的索引和写出更优化的查询语句。
+
+使用方法，在select语句前加上explain就可以了：
+https://www.cnblogs.com/yycc/p/7338894.html
+
+如：
+    explain select surname,first_name form a,b where a.id=b.id
+type：这是重要的列，显示连接使用了何种类型。从最好到最差的连接类型为const、eq_reg、ref、range、index和ALL
+
+type显示的是访问类型，是较为重要的一个指标，结果值从好到坏依次是：system > const > eq_ref > ref > fulltext > ref_or_null > index_merge > unique_subquery > index_subquery > range > index > ALL
+一般来说，得保证查询至少达到range级别，最好能达到ref。
+
+==== Mysql性能优化之引擎的选择
+MySQL 的存储引擎可能是所有关系型数据库产品中最具有特色的了，不仅可以同时使用多种存储引擎，而且每种存储引擎和MySQL之间使用插件方式
+这种非常松的耦合关系。
+https://www.cnblogs.com/andy6/p/5789248.html
+----
+ySQL中的数据用各种不同的技术存储在文件(或者内存)中。这些技术中的每一种技术都使用不同的存储机制、索引技巧、锁定水平并且
+最终提供广泛的不同的功能和能力。通过选择不同的技术，你能够获得额外的速度或者功能，从而改善你的应用的整体功能。
+
+这些不同的技术以及配套的相关功能在 MySQL中被称作存储引擎(也称作表类型)。
+----
+
+==== 表结构优化
+{
+  数据类型选择
+  数据库操作中最为耗时的操作就是 IO 处理，大部分数据库操作 90% 以上的时间都花在了 IO 读写上面。所以尽可能减少 IO 读写量，可以在很大程度上提高数据库操作的性能。我们无法改变数据库中需要存储的数据，但是我们可以在这些数据的存储方式方面花一些心思。下面的这些关于字段类型的优化建议主要适用于记录条数较多，数据量较大的场景，因为精细化的数据类型设置可能带来维护成本的提高，过度优化也可能会带来其他的问题：
+  数字类型：非万不得已不要使用DOUBLE，不仅仅只是存储长度的问题，同时还会存在精确性的问题。同样，固定精度的小数，也不建议使用DECIMAL，建议乘以固定倍数转换成整数存储，可以大大节省存储空间，且不会带来任何附加维护成本。对于整数的存储，在数据量较大的情况下，建议区分开 TINYINT / INT / BIGINT 的选择，因为三者所占用的存储空间也有很大的差别，能确定不会使用负数的字段，建议添加unsigned定义。当然，如果数据量较小的数据库，也可以不用严格区分三个整数类型。
+  字符类型：非万不得已不要使用 TEXT 数据类型，其处理方式决定了他的性能要低于char或者是varchar类型的处理。定长字段，建议使用 CHAR 类型，不定长字段尽量使用 VARCHAR，且仅仅设定适当的最大长度，而不是非常随意的给一个很大的最大长度限定，因为不同的长度范围，MySQL也会有不一样的存储处理。
+  时间类型：尽量使用TIMESTAMP类型，因为其存储空间只需要 DATETIME 类型的一半。对于只需要精确到某一天的数据类型，建议使用DATE类型，因为他的存储空间只需要3个字节，比TIMESTAMP还少。不建议通过INT类型类存储一个unix timestamp 的值，因为这太不直观，会给维护带来不必要的麻烦，同时还不会带来任何好处。
+  ENUM & SET：对于状态字段，可以尝试使用 ENUM 来存放，因为可以极大的降低存储空间，而且即使需要增加新的类型，只要增加于末尾，修改结构也不需要重建表数据。如果是存放可预先定义的属性数据呢？可以尝试使用SET类型，即使存在多种属性，同样可以游刃有余，同时还可以节省不小的存储空间。
+  LOB类型：强烈反对在数据库中存放 LOB 类型数据，虽然数据库提供了这样的功能，但这不是他所擅长的，我们更应该让合适的工具做他擅长的事情，才能将其发挥到极致。在数据库中存储 LOB 数据就像让一个多年前在学校学过一点Java的营销专业人员来写 Java 代码一样。
+  字符编码
+  字符集直接决定了数据在MySQL中的存储编码方式，由于同样的内容使用不同字符集表示所占用的空间大小会有较大的差异，所以通过使用合适的字符集，可以帮助我们尽可能减少数据量，进而减少IO操作次数。
+  纯拉丁字符能表示的内容，没必要选择 latin1 之外的其他字符编码，因为这会节省大量的存储空间
+  如果我们可以确定不需要存放多种语言，就没必要非得使用UTF8或者其他UNICODE字符类型，这回造成大量的存储空间浪费
+  MySQL的数据类型可以精确到字段，所以当我们需要大型数据库中存放多字节数据的时候，可以通过对不同表不同字段使用不同的数据类型来较大程度减小数据存储量，进而降低 IO 操作次数并提高缓存命中率
+  适当拆分
+  有些时候，我们可能会希望将一个完整的对象对应于一张数据库表，这对于应用程序开发来说是很有好的，但是有些时候可能会在性能上带来较大的问题。当我们的表中存在类似于 TEXT 或者是很大的 VARCHAR类型的大字段的时候，如果我们大部分访问这张表的时候都不需要这个字段，我们就该义无反顾的将其拆分到另外的独立表中，以减少常用数据所占用的存储空间。这样做的一个明显好处就是每个数据块中可以存储的数据条数可以大大增加，既减少物理 IO 次数，也能大大提高内存中的缓存命中率。
+  上面几点的优化都是为了减少每条记录的存储空间大小，让每个数据库中能够存储更多的记录条数，以达到减少 IO 操作次数，提高缓存命中率。
+}
+
+====  四、MySQL 数据库性能优化之缓存参数优化
+{
+  从 MySQL 数据库IO相关参数（缓存参数）的角度来看看可以通过哪些参数进行IO优化：
+  query_cache_size/query_cache_type （global） Query cache 作用于整个 MySQL Instance，主要用来缓存 MySQL 中的 ResultSet，也就是一条SQL语句执行的结果集，所以仅仅只能针对select语句。当我们打开了 Query Cache 功能，MySQL在接受到一条select语句的请求后，如果该语句满足Query Cache的要求（未显式说明不允许使用Query Cache，或者已经显式申明需要使用Query Cache），MySQL 会直接根据预先设定好的HASH算法将接受到的select语句以字符串方式进行hash，然后到Query Cache 中直接查找是否已经缓存。也就是说，如果已经在缓存中，该select请求就会直接将数据返回，从而省略了后面所有的步骤（如 SQL语句的解析，优化器优化以及向存储引擎请求数据等），极大的提高性能。当然，Query Cache 也有一个致命的缺陷，那就是当某个表的数据有任何任何变化，都会导致所有引用了该表的select语句在Query Cache 中的缓存数据失效。所以，当我们的数据变化非常频繁的情况下，使用Query Cache 可能会得不偿失。Query Cache的使用需要多个参数配合，其中最为关键的是 query_cache_size 和 query_cache_type ，前者设置用于缓存 ResultSet 的内存大小，后者设置在何场景下使用 Query Cache。在以往的经验来看，如果不是用来缓存基本不变的数据的MySQL数据库，query_cache_size 一般 256MB 是一个比较合适的大小。当然，这可以通过计算Query Cache的命中率（Qcache_hits/(Qcache_hits+Qcache_inserts)*100)）来进行调整。query_cache_type可以设置为0(OFF)，1(ON)或者2(DEMOND)，分别表示完全不使用query cache，除显式要求不使用query cache（使用sql_no_cache）之外的所有的select都使用query cache，只有显示要求才使用query cache（使用sql_cache）。
+  binlog_cache_size （global） Binlog Cache 用于在打开了二进制日志（binlog）记录功能的环境，是 MySQL 用来提高binlog的记录效率而设计的一个用于短时间内临时缓存binlog数据的内存区域。一般来说，如果我们的数据库中没有什么大事务，写入也不是特别频繁，2MB～4MB是一个合适的选择。但是如果我们的数据库大事务较多，写入量比较大，可与适当调高binlog_cache_size。同时，我们可以通过binlog_cache_use 以及 binlog_cache_disk_use来分析设置的binlog_cache_size是否足够，是否有大量的binlog_cache由于内存大小不够而使用临时文件（binlog_cache_disk_use）来缓存了。
+  key_buffer_size （global） Key Buffer 可能是大家最为熟悉的一个 MySQL 缓存参数了，尤其是在 MySQL 没有更换默认存储引擎的时候，很多朋友可能会发现，默认的 MySQL 配置文件中设置最大的一个内存参数就是这个参数了。key_buffer_size 参数用来设置用于缓存 MyISAM存储引擎中索引文件的内存区域大小。如果我们有足够的内存，这个缓存区域最好是能够存放下我们所有的 MyISAM 引擎表的所有索引，以尽可能提高性能。此外，当我们在使用MyISAM 存储的时候有一个及其重要的点需要注意，由于 MyISAM 引擎的特性限制了他仅仅只会缓存索引块到内存中，而不会缓存表数据库块。所以，我们的 SQL 一定要尽可能让过滤条件都在索引中，以便让缓存帮助我们提高查询效率。
+  bulk_insert_buffer_size （thread）和key_buffer_size一样，这个参数同样也仅作用于使用 MyISAM存储引擎，用来缓存批量插入数据的时候临时缓存写入数据。当我们使用如下几种数据写入语句的时候，会使用这个内存区域来缓存批量结构的数据以帮助批量写入数据文件：insert … select …
+  insert … values (…) ,(…),(…)…
+  load data infile… into… (非空表)
+  innodb_buffer_pool_size（global）当我们使用InnoDB存储引擎的时候，innodb_buffer_pool_size 参数可能是影响我们性能的最为关键的一个参数了，他用来设置用于缓存 InnoDB 索引及数据块的内存区域大小，类似于 MyISAM 存储引擎的 key_buffer_size 参数，当然，可能更像是 Oracle 的 db_cache_size。简单来说，当我们操作一个 InnoDB 表的时候，返回的所有数据或者去数据过程中用到的任何一个索引块，都会在这个内存区域中走一遭。和key_buffer_size 对于 MyISAM 引擎一样，innodb_buffer_pool_size 设置了 InnoDB 存储引擎需求最大的一块内存区域的大小，直接关系到 InnoDB存储引擎的性能，所以如果我们有足够的内存，尽可将该参数设置到足够打，将尽可能多的 InnoDB 的索引及数据都放入到该缓存区域中，直至全部。我们可以通过 (Innodb_buffer_pool_read_requests – Innodb_buffer_pool_reads) / Innodb_buffer_pool_read_requests * 100% 计算缓存命中率，并根据命中率来调整 innodb_buffer_pool_size 参数大小进行优化。
+  innodb_additional_mem_pool_size（global）这个参数我们平时调整的可能不是太多，很多人都使用了默认值，可能很多人都不是太熟悉这个参数的作用。innodb_additional_mem_pool_size 设置了InnoDB存储引擎用来存放数据字典信息以及一些内部数据结构的内存空间大小，所以当我们一个MySQL Instance中的数据库对象非常多的时候，是需要适当调整该参数的大小以确保所有数据都能存放在内存中提高访问效率的。这个参数大小是否足够还是比较容易知道的，因为当过小的时候，MySQL 会记录 Warning 信息到数据库的 error log 中，这时候你就知道该调整这个参数大小了。
+  innodb_log_buffer_size （global）这是 InnoDB 存储引擎的事务日志所使用的缓冲区。类似于 Binlog Buffer，InnoDB 在写事务日志的时候，为了提高性能，也是先将信息写入 Innofb Log Buffer 中，当满足 innodb_flush_log_trx_commit 参数所设置的相应条件（或者日志缓冲区写满）之后，才会将日志写到文件（或者同步到磁盘）中。可以通过 innodb_log_buffer_size 参数设置其可以使用的最大内存空间。
+  注：innodb_flush_log_trx_commit 参数对 InnoDB Log 的写入性能有非常关键的影响。该参数可以设置为0，1，2，解释如下：0：log buffer中的数据将以每秒一次的频率写入到log file中，且同时会进行文件系统到磁盘的同步操作，但是每个事务的commit并不会触发任何log buffer 到log file的刷新或者文件系统到磁盘的刷新操作；
+  1：在每次事务提交的时候将log buffer 中的数据都会写入到log file，同时也会触发文件系统到磁盘的同步；
+  2：事务提交会触发log buffer 到log file的刷新，但并不会触发磁盘文件系统到磁盘的同步。此外，每秒会有一次文件系统到磁盘同步操作。此外，MySQL文档中还提到，这几种设置中的每秒同步一次的机制，可能并不会完全确保非常准确的每秒就一定会发生同步，还取决于进程调度的问题。实际上，InnoDB 能否真正满足此参数所设置值代表的意义正常 Recovery 还是受到了不同 OS 下文件系统以及磁盘本身的限制，可能有些时候在并没有真正完成磁盘同步的情况下也会告诉 mysqld 已经完成了磁盘同步。
+  innodb_max_dirty_pages_pct （global）这个参数和上面的各个参数不同，他不是用来设置用于缓存某种数据的内存大小的一个参数，而是用来控制在 InnoDB Buffer Pool 中可以不用写入数据文件中的Dirty Page 的比例（已经被修但还没有从内存中写入到数据文件的脏数据）。这个比例值越大，从内存到磁盘的写入操作就会相对减少，所以能够一定程度下减少写入操作的磁盘IO。但是，如果这个比例值过大，当数据库 Crash 之后重启的时间可能就会很长，因为会有大量的事务数据需要从日志文件恢复出来写入数据文件中。同时，过大的比例值同时可能也会造成在达到比例设定上限后的 flush 操作“过猛”而导致性能波动很大。
+  上面这几个参数是 MySQL 中为了减少磁盘物理IO而设计的主要参数，对 MySQL 的性能起到了至关重要的作用。
+  —EOF—
+  按照 mcsrainbow 朋友的要求，这里列一下根据以往经验得到的相关参数的建议值：
+  query_cache_type : 如果全部使用innodb存储引擎，建议为0，如果使用MyISAM 存储引擎，建议为2，同时在SQL语句中显式控制是否是哟你gquery cache
+  query_cache_size: 根据 命中率（Qcache_hits/(Qcache_hits+Qcache_inserts)*100)）进行调整，一般不建议太大，256MB可能已经差不多了，大型的配置型静态数据可适当调大
+  binlog_cache_size: 一般环境2MB～4MB是一个合适的选择，事务较大且写入频繁的数据库环境可以适当调大，但不建议超过32MB
+  key_buffer_size: 如果不使用MyISAM存储引擎，16MB足以，用来缓存一些系统表信息等。如果使用 MyISAM存储引擎，在内存允许的情况下，尽可能将所有索引放入内存，简单来说就是“越大越好”
+  bulk_insert_buffer_size: 如果经常性的需要使用批量插入的特殊语句（上面有说明）来插入数据，可以适当调大该参数至16MB～32MB，不建议继续增大，某人8MB
+  innodb_buffer_pool_size: 如果不使用InnoDB存储引擎，可以不用调整这个参数，如果需要使用，在内存允许的情况下，尽可能将所有的InnoDB数据文件存放如内存中，同样将但来说也是“越大越好”
+  innodb_additional_mem_pool_size: 一般的数据库建议调整到8MB～16MB，如果表特别多，可以调整到32MB，可以根据error log中的信息判断是否需要增大
+  innodb_log_buffer_size: 默认是1MB，系的如频繁的系统可适当增大至4MB～8MB。当然如上面介绍所说，这个参数实际上还和另外的flush参数相关。一般来说不建议超过32MB
+  innodb_max_dirty_pages_pct: 根据以往的经验，重启恢复的数据如果要超过1GB的话，启动速度会比较慢，几乎难以接受，所以建议不大于 1GB/innodb_buffer_pool_size(GB)*100 这个值。当然，如果你能够忍受启动时间比较长，而且希望尽量减少内存至磁盘的flush，可以将这个值调整到90，但不建议超过90
+  注：以上取值范围仅仅只是我的根据以往遇到的数据库场景所得到的一些优化经验值，并不一定适用于所有场景，所以在实际优化过程中还需要大家自己不断的调整分析，也欢迎大家随时通过 Mail 与我联系沟通交流优化或者是架构方面的技术，一起探讨相互学习。
+}
+
+==== mysql优化总结
+{
+  Mysql优化总结
+
+  一、索引
+  1、创建索引：
+  （1）．ALTER TABLE
+   ALTER TABLE用来创建普通索引、UNIQUE索引或PRIMARY KEY索引。
+
+   ALTER TABLE table_name ADD INDEX index_name (column_list)
+
+   ALTER TABLE table_name ADD UNIQUE (column_list)
+
+   ALTER TABLE table_name ADD PRIMARY KEY (column_list)
+
+  （2）、CREATE INDEX
+   CREATE INDEX可对表增加普通索引或UNIQUE索引。
+
+   CREATE INDEX index_name ON table_name (column_list)
+
+   CREATE UNIQUE INDEX index_name ON table_name (column_list)
+  2、查看索引
+
+   mysql> show index from tblname;
+
+   mysql> show keys from tblname;
+  3、删除索引
+   可利用ALTER TABLE或DROP INDEX语句来删除索引。类似于CREATE INDEX语句，DROP INDEX可以在ALTER TABLE 内部作为一条语句处理，语法如下。
+   DROP INDEX index_name ON talbe_name
+
+   ALTER TABLE table_name DROP INDEX index_name
+
+   ALTER TABLE table_name DROP PRIMARY KEY
+  索引：http://www.cnblogs.com/hustcat/archive/2009/10/28/1591648.html
+  **explain +select ·····用来获取select语句的执行的相关信息及索引的使用等
+  **describe table table_name;
+  **analyze table table_name;查看表的信息，帮助优化
+  **show 查看执行状态
+  二、my.ini中的配置
+  http://www.chinaz.com/program/2009/1210/100740.shtml
+  mysql > show status; 可以查看具体的设置 服务器的状态
+  具体的配置呀什么，没有亲自试验过
+  三、数据表引擎
+   1、MyISAM：mysql默认的
+   2、InnoDB：支持事务、锁、外键、聚簇索引
+  引擎介绍：http://blog.csdn.net/cheungjustin/article/details/5999880
+   http://limaolinjia.blog.163.com/blog/static/539162282011012145139/
+  四、索引的类型：
+   1、B-Tree索引
+   2、hash索引
+  具体的参考还是一）
+  五、事务
+  数据表引擎使用InnoDB
+  http://www.cnblogs.com/winner/archive/2011/11/09/2242272.html
+
+  六、存储过程
+  经编译和优化后存储在数据库服务器中，运行效率高，可以降低客户机和服务器之间的通信量，有利于集中控制，易于维护 （P247）
+  http://blog.sina.com.cn/s/blog_52d20fbf0100ofd5.html
+  七、mysql profiling（mysql性能分析器）优化sql语句
+  查看SQL执行消耗系统资源的信息
+  ++++需要开启+++
+  具体使用：http://www.jiunile.com/mysql-profiling%E7%9A%84%E4%BD%BF%E7%94%A8.html
+  八、慢查询日志
+  ++++需要开启++++
+  通过慢日志查询可以知道哪些SQL语句执行效率低下，那些sql语句使用的频率高等
+  对MySQL查询语句的监控、分析、优化是MySQL优化非常重要的一步。开启慢查询日志后，由于日志记录操作，在一定程度上会占用CPU资源影响mysql的性能，但是可以阶段性开启来定位性能瓶颈。
+  具体参考：http://blog.csdn.net/renzhenhuai/article/details/8839874
+  关于mysql的一些讲解：http://www.ccvita.com/category/mysql
+}
+××××后边还有好多
+https://blog.csdn.net/yzllz001/article/details/54848513

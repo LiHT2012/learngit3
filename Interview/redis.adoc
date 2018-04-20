@@ -1,0 +1,50 @@
+springboot+redis
+http://www.cnblogs.com/cnmenglang/p/6424236.html
+优点;
+1 读写性能优异
+
+2 支持数据持久化，支持AOF日志和RDB快照两种持久化方式
+
+3 支持主从复制，主机会自动将数据同步到从机，可以进行读写分离。
+
+4 数据结构丰富：除了支持string类型的value外还支持string、hash、set、sortedset、list等数据结构。
+
+@Autowired
+   private RedisTemplate<String, String> redisTemplate;
+//import org.springframework.data.redis.core.RedisTemplate;
+   public void addUser(String key,Long time,User user){
+       Gson gson = new Gson();
+       redisTemplate.opsForValue().set(key, gson.toJson(user),time,TimeUnit.MINUTES);
+   }
+// redis 提供5种数据类型的操作 String ,hash ,list , set , zset
+config
+{
+  @Configuration
+  public class RedisConfiguration {
+
+      @Bean
+      @SuppressWarnings({ "rawtypes", "unchecked" })
+      public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory redisFactory){
+          StringRedisTemplate template = new StringRedisTemplate(redisFactory);
+          Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new
+                  Jackson2JsonRedisSerializer(Object.class);
+
+          ObjectMapper om = new ObjectMapper();
+          om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+          om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+          jackson2JsonRedisSerializer.setObjectMapper(om);
+
+          template.setValueSerializer(jackson2JsonRedisSerializer);
+          template.afterPropertiesSet();
+          return template;
+      }
+  }
+}
+
+<!-- springboot 热部署 -->
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-devtools</artifactId>
+  <optional>true</optional><!-- optional=true,依赖不会传递，该项目依赖devtools；之后依赖myboot项目的项目如果想要使用devtools，需要重新引入 -->
+</dependency>
+//原来我们一直都是gradle project，虽然用了springboot，但不是真正的springboot

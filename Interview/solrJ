@@ -1,0 +1,7 @@
+SolrClient是所有类基类，里面定义了更新维护索引、搜索相关的接口；
+LBHttpSolrClient用于有多个solr服务器时实现负载均衡的情况；
+ConcurrentUpdateSolrClient类是线程安全类，推荐在更新维护索引时用；
+HttpSolrClient用于独立工作模式的solr的查询；
+CloudSorlClient用于solrCould模式
+
+https://www.cnblogs.com/doit8791/p/4902571.html

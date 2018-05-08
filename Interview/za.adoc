@@ -1,0 +1,76 @@
+String 类型和 StringBuffer 类型的主要性能区别其实在于 String 是不可变的对象, 因此在每次对 String 类型进行改变的时候其实都等同于生成了一个新的 String 对象，
+然后将指针指向新的 String 对象，所以经常改变内容的字符串最好不要用 String ，因为每次生成对象都会对系统性能产生影响，特别当内存中无引用对象多了以后， JVM 的 GC 就会开始工作，那速度是一定会相当慢的.
+
+不可变的对象一定是线程安全的，并且永远也不需要额外的同步[1] 。因为一个不可变的对象只要构建正确，其外部可见状态永远也不会改变，永远也不会看到它处于不一致的状态。Java 类库中大多数基本数值类如
+ Integer 、 String 和 BigInteger 都是不可变的。
+需要注意的是，对于Integer，该类不提供add方法，加法是使用+来直接操作。而+操作是不具线程安全的。这是提供原子操作类AtomicInteger的原因。
+
+线程兼容类不是线程安全的，但是可以通过正确使用同步而在并发环境中安全地使用。这可能意味着用一个 synchronized 块包围每一个方法调用，或者创建一个包装器对象，
+其中每一个方法都是同步的(就像 Collections.synchronizedList() 一样)。也可能意味着用 synchronized 块包围某些操作序列。为了最大程度地利用线程兼容类，如果所有调用都使用同一个块，
+那么就不应该要求调用者对该块同步。这样做会使线程兼容的对象作为变量实例包含在其他线程安全的对象中，从而可以利用其所有者对象的同步。
+许多常见的类是线程兼容的，如集合类 ArrayList 和 HashMap 、 java.text.SimpleDateFormat 、或者 JDBC 类 Connection 和 ResultSet 。
+线程对立
+
+线程对立类是那些不管是否调用了外部同步都不能在并发使用时安全地呈现的类。线程对立很少见，当类修改静态数据，而静态数据会影响在其他线程中执行的其他类的行为，这时通常会出现线程对立。
+线程对立类的一个例子是调用 System.setOut() 的类。
+
+System.Array.copyOf()可以看作是受限的System.arraycopy()，它主要是用来将原数组全部拷贝到一个新长度的数组，适用于数组扩容。
+
+
+
+
+
+
+
+
+
+
+java8
+https://blog.csdn.net/yalishadaa/article/details/78152717
+https://blog.csdn.net/u014470581/article/details/54944384
+
+
+springcloud
+https://blog.csdn.net/yalishadaa/article/details/77624053
+
+
+
+
+======
+https://blog.csdn.net/frankaqi/article/details/49206547
+
+http://ifeve.com/spring-interview-questions-and-answers/
+
+
+component scan实现原理了解么 如果我把transactional注解标到private方法上会怎样，实现原理如何
+spring包括哪些技术以及技术细节和实现方式
+
+1. Spring 是干嘛用的，为什么要用 Spring？
+2. Spring 是如何管理事务的？
+3. Spring 的不同事务传播行为有哪些，干什么用的？
+4. Bean 是如何被管理的，生命周期如何？
+5. Bean 的不同 scope，比如 prototype、singleton 有什么区别？
+6. Resource 是如何被查找、加载的？
+7. 有哪些常用的 Context？
+8. Spring 的 AOP 如何配置与使用？
+
+
+××××
+https://www.cnblogs.com/notDog/p/5420727.html
+××××
+看spring源码
+https://blog.csdn.net/qq_27529917/article/details/79209846
+=========
+
+java多线程
+
+？？？？
+Threadlocal对静态引用型变量和同一个实例并不安全?
+
+if (poolSize >= corePoolSize || !addIfUnderCorePoolSize(command))
+由于是或条件运算符，所以先计算前半部分的值，如果线程池中当前线程数不小于核心池大小，那么就会直接进入下面的if语句块了。
+这里有点问题，||运算实际上不管前半部分能不能成功都会运算后半部分，只有&& 会考虑前半部分能不能成功
+
+???????
+https://www.cnblogs.com/wxd0108/p/5479442.html
+http://www.cnblogs.com/chenshengjava/p/8604234.html

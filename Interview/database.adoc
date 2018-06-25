@@ -1,0 +1,9 @@
+----
+原符号       <        <=      >       >=       &        '        "
+替换符号    &lt;    &lt;=   &gt;    &gt;=   &amp;   &apos;  &quot;
+例如：sql如下：
+create_date_time &gt;= #{startTime} and  create_date_time &lt;= #{endTime}
+----
+
+其实在数据库中count(*)和count(列)根本就是不等价的，count(*)是针对于全表的，而count(列)是针对于某一列的，如果此列值为空的话，count(列)是不会统计这一行的。
+所以两者根本没有可比性，性能比较首先要考虑写法等价，这两个语句根本就不等价。也就失去了去比较的意义！！！

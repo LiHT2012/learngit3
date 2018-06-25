@@ -1,0 +1,26 @@
+1. @Cacheable注解可以用在方法或者类级别。当他应用于方法级别的时候，就是缓存返回值了。当应用在类级别的时候，这个类的所有方法的返回值都将被缓存。
+
+2. @Cacheable注解有三个参数，value是必须的，还有key和condition。第一个参数，也就是value指明了缓存将被存到什么地方。
+任何存储在缓存中的数据为了高速访问都需要一个key。Spring默认使用被@Cacheable注解的方法的签名来作为key，当然你可以重写key，自定义key可以使用SpEL表达式。
+
+@Cacheable(value = "employee", key = "#surname")
+   public Person findEmployeeBySurname(String firstName, String surname, int age) {
+
+    return new Person(firstName, surname, age);
+  }
+在findEmployeeBySurname()的注解中”#surname”是一个SpEL表达式，他将使用findEmployeeBySurname()方法中的surname参数作为key。
+
+最后一个参数是condition（可选），同样的，也是引用一个SpEL表达式。但是这个参数将指明方法的返回结果是否被缓存。
+@Cacheable(value = "employee", condition = "#age < 25")
+ public Person findEmployeeByAge(String firstName, String surname, int age) {
+
+   return new Person(firstName, surname, age);
+ }
+上面的例子中，只有年龄小于25的时候才被缓存。
+
+效果：第一次执行，会执行方法体;再次执行，Spring直接将缓存中的数据作为返回值返回
+
+怎么使用@CacheEvict注解来清除缓存？
+如何选择一个缓存的实现，并配置Spring的缓存？
+https://blog.csdn.net/szwandcj/article/details/50240903
+https://blog.csdn.net/zheng_sida/article/details/51539663

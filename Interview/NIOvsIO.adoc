@@ -1,0 +1,76 @@
+==== Java NIO提供了与标准IO不同的IO工作方式：
+
+Channels and Buffers（通道和缓冲区）：标准的IO基于字节流和字符流进行操作的，而NIO是基于通道（Channel）和缓冲区（Buffer）进行操作，数据总是从通道读取到缓冲区中，或者从缓冲区写入到通道中。
+
+Asynchronous IO（异步IO）：Java NIO可以让你异步的使用IO，例如：当线程从通道读取数据到缓冲区时，线程还是可以进行其他事情。当数据被写入到缓冲区时，线程可以继续处理它。从缓冲区写入通道也类似。
+
+Selectors（选择器）：Java NIO引入了选择器的概念，选择器用于监听多个通道的事件（比如：连接打开，数据到达）。因此，单个的线程可以监听多个数据通道。
+
+==== 使用场景
+
+NIO
+优势在于一个线程管理多个通道；但是数据的处理将会变得复杂；
+如果需要管理同时打开的成千上万个连接，这些连接每次只是发送少量的数据，采用这种；
+
+传统的IO
+适用于一个线程管理一个通道的情况；因为其中的流数据的读取是阻塞的；
+如果需要管理同时打开不太多的连接，这些连接会发送大量的数据；
+
+==== NIO vs IO之间的理念上面的区别（NIO将阻塞交给了后台线程执行）
+
+1. IO是面向流的，NIO是面向缓冲区的
+Java IO面向流意味着每次从流中读一个或多个字节，直至读取所有字节，它们没有被缓存在任何地方；
+NIO则能前后移动流中的数据，因为是面向缓冲区的
+
+2. IO流是阻塞的，NIO流是不阻塞的
+Java IO的各种流是阻塞的。这意味着，当一个线程调用read() 或 write()时，该线程被阻塞，直到有一些数据被读取，或数据完全写入。该线程在此期间不能再干任何事情了
+Java NIO的非阻塞模式，使一个线程从某通道发送请求读取数据，但是它仅能得到目前可用的数据，如果目前没有数据可用时，就什么都不会获取。NIO可让您只使用一个（或几个）单线程管理多个通道（网络连接或文件），
+但付出的代价是解析数据可能会比从一个阻塞流中读取数据更复杂。
+非阻塞写也是如此。一个线程请求写入一些数据到某通道，但不需要等待它完全写入，这个线程同时可以去做别的事情。
+
+3.选择器
+Java NIO的选择器允许一个单独的线程来监视多个输入通道，你可以注册多个通道使用一个选择器，然后使用一个单独的线程来“选择”通道：这些通道里已经有可以处理的输入，或者选择已准备写入的通道。
+这种选择机制，使得一个单独的线程很容易来管理多个通道。
+
+==== Java NIO 由以下几个核心部分组成：
+Channels
+Buffers
+Selectors
+
+基本上，所有的 IO 在NIO 中都从一个Channel 开始。Channel 有点象流。 数据可以从Channel读到Buffer中，也可以从Buffer 写到Channel中
+
+{
+  NIO可让您只使用一个（或几个）单线程管理多个通道（网络连接或文件），但付出的代价是解析数据可能会比从一个阻塞流中读取数据更复杂。
+  如果需要管理同时打开的成千上万个连接，这些连接每次只是发送少量的数据，例如聊天服务器，实现NIO的服务器可能是一个优势。同样，如果你需要维持许多打开的连接到其他计算机上，如P2P网络中，使用一个单独的线程
+  来管理你所有出站连接，可能是一个优势。
+
+  如果你有少量的连接使用非常高的带宽，一次发送大量的数据，也许典型的IO服务器实现可能非常契合。
+}
+
+==== 各核心部分的实现和使用
+https://blog.csdn.net/evan_man/article/details/50910542
+
+{
+  Selector允许单线程处理多个 Channel。如果你的应用打开了多个连接（通道），但每个连接的流量都很低，使用Selector就会很方便。例如，在一个聊天服务器中。
+    要使用Selector，得向Selector注册Channel，然后调用它的select()方法。这个方法会一直阻塞到某个注册的通道有事件就绪。一旦这个方法返回，线程就可以处理这些事件，事件的例子有如新连接进来，数据接收等
+
+  使用：
+
+  创建：Selector selector = Selector.open();
+  注册通道：
+  channel.configureBlocking(false);
+  //与Selector一起使用时，Channel必须处于非阻塞模式
+  //这意味着不能将FileChannel与Selector一起使用，因为FileChannel不能切换到非阻塞模式(而套接字通道都可以)
+  SelectionKey key = channel.register(selector, Selectionkey.OP_READ);
+  //第二个参数表明Selector监听Channel时对什么事件感兴趣
+  //SelectionKey.OP_CONNECT  SelectionKey.OP_ACCEPT  SelectionKey.OP_READ SelectionKey.OP_WRITE
+  //可以用或操作符将多个兴趣组合一起
+  SelectionKey
+  包含了interest集合 、ready集合 、Channel 、Selector 、附加的对象（可选）
+  int interestSet = key.interestOps()；可以进行类似interestSet & SelectionKey.OP_CONNECT的判断
+  使用：
+  select()：阻塞到至少有一个通道在你注册的事件上就绪了
+  selectNow()：不会阻塞，不管什么通道就绪都立刻返回
+  selectedKeys()：访问“已选择键集（selected key set）”中的就绪通道
+  close()：使用完selector需要用其close()方法会关闭该Selector，且使注册到该Selector上的所有SelectionKey实例无效
+}
